@@ -1,47 +1,47 @@
 // =====================================================================
-// GCLI2API 控制面板公共JavaScript模块
+// GCLI2API Control Panel PublicJavaScriptModule
 // =====================================================================
 
 // =====================================================================
-// 全局状态管理
+// Global State Management
 // =====================================================================
 const AppState = {
-    // 认证相关
+    // Authentication Related
     authToken: '',
     authInProgress: false,
     currentProjectId: '',
 
-    // Antigravity认证
+    // AntigravityAuthentication
     antigravityAuthState: null,
     antigravityAuthInProgress: false,
 
-    // 凭证管理
+    // Credential Management
     creds: createCredsManager('normal'),
     antigravityCreds: createCredsManager('antigravity'),
 
-    // 文件上传
+    // File Upload
     uploadFiles: createUploadManager('normal'),
     antigravityUploadFiles: createUploadManager('antigravity'),
 
-    // 配置管理
+    // Configuration Management
     currentConfig: {},
     envLockedFields: new Set(),
 
-    // 日志管理
+    // Log Management
     logWebSocket: null,
     allLogs: [],
     filteredLogs: [],
     currentLogFilter: 'all',
 
-    // 使用统计
+    // Usage Statistics
     usageStatsData: {},
 
-    // 冷却倒计时
+    // Cooldown Countdown
     cooldownTimerInterval: null
 };
 
 // =====================================================================
-// 凭证管理器工厂
+// Credential Manager Factory
 // =====================================================================
 function createCredsManager(type) {
     const modeParam = type === 'antigravity' ? 'mode=antigravity' : 'mode=geminicli';
@@ -57,11 +57,9 @@ function createCredsManager(type) {
         currentStatusFilter: 'all',
         currentErrorCodeFilter: 'all',
         currentCooldownFilter: 'all',
-        currentPreviewFilter: 'all',
-        currentTierFilter: 'all',
         statsData: { total: 0, normal: 0, disabled: 0 },
 
-        // API端点
+        // APIEndpoint
         getEndpoint: (action) => {
             const endpoints = {
                 status: `./creds/status`,
@@ -79,20 +77,20 @@ function createCredsManager(type) {
             return endpoints[action] || '';
         },
 
-        // 获取mode参数
+        // GetmodeParameters
         getModeParam: () => modeParam,
 
-        // DOM元素ID前缀
+        // DOMElementIDprefix
         getElementId: (suffix) => {
-            // 普通凭证的ID首字母小写,如 credsLoading
-            // Antigravity的ID是 antigravity + 首字母大写,如 antigravityCredsLoading
+            // for normal credentialsIDLowercase first letter,such as credsLoading
+            // AntigravityofIDYes antigravity + Uppercase first letter,such as antigravityCredsLoading
             if (type === 'antigravity') {
                 return 'antigravity' + suffix.charAt(0).toUpperCase() + suffix.slice(1);
             }
             return suffix.charAt(0).toLowerCase() + suffix.slice(1);
         },
 
-        // 刷新凭证列表
+        // Refresh credential list
         async refresh() {
             const loading = document.getElementById(this.getElementId('CredsLoading'));
             const list = document.getElementById(this.getElementId('CredsList'));
@@ -104,10 +102,8 @@ function createCredsManager(type) {
                 const offset = (this.currentPage - 1) * this.pageSize;
                 const errorCodeFilter = this.currentErrorCodeFilter || 'all';
                 const cooldownFilter = this.currentCooldownFilter || 'all';
-                const previewFilter = this.currentPreviewFilter || 'all';
-                const tierFilter = this.currentTierFilter || 'all';
                 const response = await fetch(
-                    `${this.getEndpoint('status')}?offset=${offset}&limit=${this.pageSize}&status_filter=${this.currentStatusFilter}&error_code_filter=${errorCodeFilter}&cooldown_filter=${cooldownFilter}&preview_filter=${previewFilter}&tier_filter=${tierFilter}&${this.getModeParam()}`,
+                    `${this.getEndpoint('status')}?offset=${offset}&limit=${this.pageSize}&status_filter=${this.currentStatusFilter}&error_code_filter=${errorCodeFilter}&cooldown_filter=${cooldownFilter}&${this.getModeParam()}`,
                     { headers: getAuthHeaders() }
                 );
 
@@ -124,19 +120,16 @@ function createCredsManager(type) {
                                 last_success: item.last_success,
                             },
                             user_email: item.user_email,
-                            model_cooldowns: item.model_cooldowns || {},
-                            preview: item.preview,
-                            tier: item.tier || 'pro',
-                            enable_credit: !!item.enable_credit
+                            model_cooldowns: item.model_cooldowns || {}
                         };
                     });
 
                     this.totalCount = data.total;
-                    // 使用后端返回的全局统计数据
+                    // Use global statistics returned by backend
                     if (data.stats) {
                         this.statsData = data.stats;
                     } else {
-                        // 兼容旧版本后端
+                        // Compatible with old backend versions
                         this.calculateStats();
                     }
                     this.updateStatsDisplay();
@@ -144,22 +137,22 @@ function createCredsManager(type) {
                     this.renderList();
                     this.updatePagination();
 
-                    let msg = `已加载 ${data.total} 个${type === 'antigravity' ? 'Antigravity' : ''}凭证文件`;
+                    let msg = `Loaded ${data.total} units${type === 'antigravity' ? 'Antigravity' : ''}Credential File`;
                     if (this.currentStatusFilter !== 'all') {
-                        msg += ` (筛选: ${this.currentStatusFilter === 'enabled' ? '仅启用' : '仅禁用'})`;
+                        msg += ` (Filter: ${this.currentStatusFilter === 'enabled' ? 'Enabled only' : 'Disabled only'})`;
                     }
                     showStatus(msg, 'success');
                 } else {
-                    showStatus(`加载失败: ${data.detail || data.error || '未知错误'}`, 'error');
+                    showStatus(`Loading failed: ${data.detail || data.error || 'Unknown Error'}`, 'error');
                 }
             } catch (error) {
-                showStatus(`网络错误: ${error.message}`, 'error');
+                showStatus(`Network Error: ${error.message}`, 'error');
             } finally {
                 loading.style.display = 'none';
             }
         },
 
-        // 计算统计数据（仅用于兼容旧版本后端）
+        // Calculate statistics (only for old backend compatibility)
         calculateStats() {
             this.statsData = { total: this.totalCount, normal: 0, disabled: 0 };
             Object.values(this.data).forEach(credInfo => {
@@ -171,14 +164,14 @@ function createCredsManager(type) {
             });
         },
 
-        // 更新统计显示
+        // Update statistics display
         updateStatsDisplay() {
             document.getElementById(this.getElementId('StatTotal')).textContent = this.statsData.total;
             document.getElementById(this.getElementId('StatNormal')).textContent = this.statsData.normal;
             document.getElementById(this.getElementId('StatDisabled')).textContent = this.statsData.disabled;
         },
 
-        // 渲染凭证列表
+        // Render credential list
         renderList() {
             const list = document.getElementById(this.getElementId('CredsList'));
             list.innerHTML = '';
@@ -186,7 +179,7 @@ function createCredsManager(type) {
             const entries = Object.entries(this.filteredData);
 
             if (entries.length === 0) {
-                const msg = this.totalCount === 0 ? '暂无凭证文件' : '当前筛选条件下暂无数据';
+                const msg = this.totalCount === 0 ? 'No credential files' : 'No data under current filter';
                 list.innerHTML = `<p style="text-align: center; color: #666;">${msg}</p>`;
                 document.getElementById(this.getElementId('PaginationContainer')).style.display = 'none';
                 return;
@@ -201,25 +194,25 @@ function createCredsManager(type) {
             this.updateBatchControls();
         },
 
-        // 获取总页数
+        // Get total pages
         getTotalPages() {
             return Math.ceil(this.totalCount / this.pageSize);
         },
 
-        // 更新分页信息
+        // Update pagination info
         updatePagination() {
             const totalPages = this.getTotalPages();
             const startItem = (this.currentPage - 1) * this.pageSize + 1;
             const endItem = Math.min(this.currentPage * this.pageSize, this.totalCount);
 
             document.getElementById(this.getElementId('PaginationInfo')).textContent =
-                `第 ${this.currentPage} 页，共 ${totalPages} 页 (显示 ${startItem}-${endItem}，共 ${this.totalCount} 项)`;
+                `No. ${this.currentPage} pages ${totalPages} Page (Show ${startItem}-${endItem}, total ${this.totalCount} items)`;
 
             document.getElementById(this.getElementId('PrevPageBtn')).disabled = this.currentPage <= 1;
             document.getElementById(this.getElementId('NextPageBtn')).disabled = this.currentPage >= totalPages;
         },
 
-        // 切换页面
+        // Switch page
         changePage(direction) {
             const newPage = this.currentPage + direction;
             if (newPage >= 1 && newPage <= this.getTotalPages()) {
@@ -228,39 +221,30 @@ function createCredsManager(type) {
             }
         },
 
-        // 改变每页大小
+        // Change page size
         changePageSize() {
             this.pageSize = parseInt(document.getElementById(this.getElementId('PageSizeSelect')).value);
             this.currentPage = 1;
             this.refresh();
         },
 
-        // 应用状态筛选
+        // Apply status filter
         applyStatusFilter() {
             this.currentStatusFilter = document.getElementById(this.getElementId('StatusFilter')).value;
             const errorCodeFilterEl = document.getElementById(this.getElementId('ErrorCodeFilter'));
             const cooldownFilterEl = document.getElementById(this.getElementId('CooldownFilter'));
-            const previewFilterEl = document.getElementById(this.getElementId('PreviewFilter'));
-            const tierFilterEl = document.getElementById(this.getElementId('TierFilter'));
             this.currentErrorCodeFilter = errorCodeFilterEl ? errorCodeFilterEl.value : 'all';
             this.currentCooldownFilter = cooldownFilterEl ? cooldownFilterEl.value : 'all';
-            this.currentPreviewFilter = previewFilterEl ? previewFilterEl.value : 'all';
-            this.currentTierFilter = tierFilterEl ? tierFilterEl.value : 'all';
             this.currentPage = 1;
             this.refresh();
         },
 
-        // 更新批量控件
+        // Update batch controls
         updateBatchControls() {
             const selectedCount = this.selectedFiles.size;
-            document.getElementById(this.getElementId('SelectedCount')).textContent = `已选择 ${selectedCount} 项`;
+            document.getElementById(this.getElementId('SelectedCount')).textContent = `Selected ${selectedCount} items`;
 
-            const batchBtnNames = ['Enable', 'Disable', 'Delete', 'Verify', 'Preview'];
-            if (this.type === 'antigravity') {
-                batchBtnNames.push('EnableCredit');
-                batchBtnNames.push('DisableCredit');
-            }
-            const batchBtns = batchBtnNames.map(action =>
+            const batchBtns = ['Enable', 'Disable', 'Delete', 'Verify'].map(action =>
                 document.getElementById(this.getElementId(`Batch${action}Btn`))
             );
             batchBtns.forEach(btn => btn && (btn.disabled = selectedCount === 0));
@@ -287,7 +271,7 @@ function createCredsManager(type) {
             });
         },
 
-        // 凭证操作
+        // Credential Operation
         async action(filename, action) {
             try {
                 const response = await fetch(`${this.getEndpoint('action')}?${this.getModeParam()}`, {
@@ -299,41 +283,34 @@ function createCredsManager(type) {
                 const data = await response.json();
 
                 if (response.ok) {
-                    showStatus(data.message || `操作成功: ${action}`, 'success');
+                    showStatus(data.message || `Operation successful: ${action}`, 'success');
                     await this.refresh();
                 } else {
-                    showStatus(`操作失败: ${data.detail || data.error || '未知错误'}`, 'error');
+                    showStatus(`Operation failed: ${data.detail || data.error || 'Unknown Error'}`, 'error');
                 }
             } catch (error) {
-                showStatus(`网络错误: ${error.message}`, 'error');
+                showStatus(`Network Error: ${error.message}`, 'error');
             }
         },
 
-        // 批量操作
+        // Batch Operation
         async batchAction(action) {
             const selectedFiles = Array.from(this.selectedFiles);
 
             if (selectedFiles.length === 0) {
-                showStatus('请先选择要操作的文件', 'error');
+                showStatus('Please select files to operate on first', 'error');
                 return;
             }
 
-            const actionNames = {
-                enable: '启用',
-                disable: '禁用',
-                delete: '删除',
-                enable_credit: '开启积分',
-                disable_credit: '关闭积分'
-            };
-            const actionLabel = actionNames[action] || action;
+            const actionNames = { enable: 'Enable', disable: 'Disable', delete: 'Delete' };
             const confirmMsg = action === 'delete'
-                ? `确定要删除选中的 ${selectedFiles.length} 个文件吗？\n注意：此操作不可恢复！`
-                : `确定要${actionLabel}选中的 ${selectedFiles.length} 个文件吗？`;
+                ? `Are you sure you want to delete the selected ${selectedFiles.length} files?\nNote: This operation is irreversible!`
+                : `Are you sure you want to${actionNames[action]}the selected ${selectedFiles.length} files?`;
 
             if (!confirm(confirmMsg)) return;
 
             try {
-                showStatus(`正在执行批量${actionLabel}操作...`, 'info');
+                showStatus(`Executing batch${actionNames[action]}operation...`, 'info');
 
                 const response = await fetch(`${this.getEndpoint('batchAction')}?${this.getModeParam()}`, {
                     method: 'POST',
@@ -345,22 +322,22 @@ function createCredsManager(type) {
 
                 if (response.ok) {
                     const successCount = data.success_count || data.succeeded;
-                    showStatus(`批量操作完成：成功处理 ${successCount}/${selectedFiles.length} 个文件`, 'success');
+                    showStatus(`Batch operation complete: successfully processed ${successCount}/${selectedFiles.length} files`, 'success');
                     this.selectedFiles.clear();
                     this.updateBatchControls();
                     await this.refresh();
                 } else {
-                    showStatus(`批量操作失败: ${data.detail || data.error || '未知错误'}`, 'error');
+                    showStatus(`Batch operation failed: ${data.detail || data.error || 'Unknown Error'}`, 'error');
                 }
             } catch (error) {
-                showStatus(`批量操作网络错误: ${error.message}`, 'error');
+                showStatus(`Batch operation network error: ${error.message}`, 'error');
             }
         }
     };
 }
 
 // =====================================================================
-// 文件上传管理器工厂
+// File Upload Manager Factory
 // =====================================================================
 function createUploadManager(type) {
     const modeParam = type === 'antigravity' ? 'mode=antigravity' : 'mode=geminicli';
@@ -371,8 +348,8 @@ function createUploadManager(type) {
         selectedFiles: [],
 
         getElementId: (suffix) => {
-            // 普通上传的ID首字母小写,如 fileList
-            // Antigravity的ID是 antigravity + 首字母大写,如 antigravityFileList
+            // for normal uploadIDLowercase first letter,such as fileList
+            // AntigravityofIDYes antigravity + Uppercase first letter,such as antigravityFileList
             if (type === 'antigravity') {
                 return 'antigravity' + suffix.charAt(0).toUpperCase() + suffix.slice(1);
             }
@@ -393,7 +370,7 @@ function createUploadManager(type) {
                         this.selectedFiles.push(file);
                     }
                 } else {
-                    showStatus(`文件 ${file.name} 格式不支持，只支持JSON和ZIP文件`, 'error');
+                    showStatus(`File ${file.name} Format not supported; only supportsJSONandZIPFile`, 'error');
                 }
             });
             this.updateFileList();
@@ -419,7 +396,7 @@ function createUploadManager(type) {
             this.selectedFiles.forEach((file, index) => {
                 const isZip = file.name.endsWith('.zip');
                 const fileIcon = isZip ? '📦' : '📄';
-                const fileType = isZip ? ' (ZIP压缩包)' : ' (JSON文件)';
+                const fileType = isZip ? ' (ZIPzip package)' : ' (JSONFile)';
 
                 const fileItem = document.createElement('div');
                 fileItem.className = 'file-item';
@@ -428,7 +405,7 @@ function createUploadManager(type) {
                         <span class="file-name">${fileIcon} ${file.name}</span>
                         <span class="file-size">(${formatFileSize(file.size)}${fileType})</span>
                     </div>
-                    <button class="remove-btn" onclick="${type === 'antigravity' ? 'removeAntigravityFile' : 'removeFile'}(${index})">删除</button>
+                    <button class="remove-btn" onclick="${type === 'antigravity' ? 'removeAntigravityFile' : 'removeFile'}(${index})">Delete</button>
                 `;
                 list.appendChild(fileItem);
             });
@@ -446,7 +423,7 @@ function createUploadManager(type) {
 
         async upload() {
             if (this.selectedFiles.length === 0) {
-                showStatus('请选择要上传的文件', 'error');
+                showStatus('Please select files to upload', 'error');
                 return;
             }
 
@@ -460,12 +437,12 @@ function createUploadManager(type) {
             this.selectedFiles.forEach(file => formData.append('files', file));
 
             if (this.selectedFiles.some(f => f.name.endsWith('.zip'))) {
-                showStatus('正在上传并解压ZIP文件...', 'info');
+                showStatus('Uploading and extractingZIPFile...', 'info');
             }
 
             try {
                 const xhr = new XMLHttpRequest();
-                xhr.timeout = 300000; // 5分钟
+                xhr.timeout = 300000; // 5minutes
 
                 xhr.upload.onprogress = (event) => {
                     if (event.lengthComputable) {
@@ -479,29 +456,29 @@ function createUploadManager(type) {
                     if (xhr.status === 200) {
                         try {
                             const data = JSON.parse(xhr.responseText);
-                            showStatus(`成功上传 ${data.uploaded_count} 个${type === 'antigravity' ? 'Antigravity' : ''}文件`, 'success');
+                            showStatus(`Successfully uploaded ${data.uploaded_count} units${type === 'antigravity' ? 'Antigravity' : ''}File`, 'success');
                             this.clearFiles();
                             progressSection.classList.add('hidden');
                         } catch (e) {
-                            showStatus('上传失败: 服务器响应格式错误', 'error');
+                            showStatus('Upload failed: Server response format error', 'error');
                         }
                     } else {
                         try {
                             const error = JSON.parse(xhr.responseText);
-                            showStatus(`上传失败: ${error.detail || error.error || '未知错误'}`, 'error');
+                            showStatus(`Upload failed: ${error.detail || error.error || 'Unknown Error'}`, 'error');
                         } catch (e) {
-                            showStatus(`上传失败: HTTP ${xhr.status}`, 'error');
+                            showStatus(`Upload failed: HTTP ${xhr.status}`, 'error');
                         }
                     }
                 };
 
                 xhr.onerror = () => {
-                    showStatus(`上传失败：连接中断 - 可能原因：文件过多(${this.selectedFiles.length}个)或网络不稳定。建议分批上传。`, 'error');
+                    showStatus(`Upload failed: connection interrupted - Possible reason: too many files(${this.selectedFiles.length}units)or network unstable. Recommended to upload in batches.`, 'error');
                     progressSection.classList.add('hidden');
                 };
 
                 xhr.ontimeout = () => {
-                    showStatus('上传失败：请求超时 - 文件处理时间过长，请减少文件数量或检查网络连接', 'error');
+                    showStatus('Upload failed: request timeout - File processing took too long; please reduce file count or check network', 'error');
                     progressSection.classList.add('hidden');
                 };
 
@@ -509,99 +486,41 @@ function createUploadManager(type) {
                 xhr.setRequestHeader('Authorization', `Bearer ${AppState.authToken}`);
                 xhr.send(formData);
             } catch (error) {
-                showStatus(`上传失败: ${error.message}`, 'error');
+                showStatus(`Upload failed: ${error.message}`, 'error');
             }
         }
     };
 }
 
 // =====================================================================
-// 工具函数
+// Utility Functions
 // =====================================================================
 function showStatus(message, type = 'info') {
     const statusSection = document.getElementById('statusSection');
     if (statusSection) {
-        // 清除之前的定时器
+        // Clear previous timer
         if (window._statusTimeout) {
             clearTimeout(window._statusTimeout);
         }
 
-        // 创建新的 toast
+        // Create new toast
         statusSection.innerHTML = `<div class="status ${type}">${message}</div>`;
         const statusDiv = statusSection.querySelector('.status');
 
-        // 强制重绘以触发动画
+        // Force redraw to trigger animation
         statusDiv.offsetHeight;
         statusDiv.classList.add('show');
 
-        // 3秒后淡出并移除
+        // 3Fade out and remove after seconds
         window._statusTimeout = setTimeout(() => {
             statusDiv.classList.add('fade-out');
             setTimeout(() => {
                 statusSection.innerHTML = '';
-            }, 300); // 等待淡出动画完成
+            }, 300); // Wait for fade-out animation to complete
         }, 3000);
     } else {
-        showMessageModal('提示', message, 'info');
+        alert(message);
     }
-}
-
-// 将文本中的链接转换为可点击的HTML链接
-function linkifyText(text) {
-    if (!text) return text;
-
-    // 匹配 http://, https:// 和 www. 开头的链接，排除常见的标点符号
-    const urlPattern = /(https?:\/\/[^\s"'<>()[\]{}]+)|(www\.[^\s"'<>()[\]{}]+)/gi;
-
-    return text.replace(urlPattern, function(url) {
-        let href = url;
-        // 如果是 www. 开头，添加 https://
-        if (url.startsWith('www.')) {
-            href = 'https://' + url;
-        }
-
-        return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="message-link" onclick="event.stopPropagation()" title="点击打开链接\n右键复制链接">${url}</a>`;
-    });
-}
-
-// 显示增强的消息模态框（支持链接高亮）
-function showMessageModal(title, message, type = 'info') {
-    // 创建模态框
-    const modal = document.createElement('div');
-    modal.className = 'message-modal-overlay';
-    modal.innerHTML = `
-        <div class="message-modal ${type}">
-            <div class="message-modal-header">
-                <h3>${title}</h3>
-                <button class="message-modal-close" onclick="this.closest('.message-modal-overlay').remove()">&times;</button>
-            </div>
-            <div class="message-modal-body">
-                ${linkifyText(message).replace(/\n/g, '<br>')}
-            </div>
-            <div class="message-modal-footer">
-                <button class="message-modal-btn" onclick="this.closest('.message-modal-overlay').remove()">关闭</button>
-            </div>
-        </div>
-    `;
-
-    // 添加到页面
-    document.body.appendChild(modal);
-
-    // 点击遮罩层关闭
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
-
-    // ESC 键关闭
-    const escHandler = function(e) {
-        if (e.key === 'Escape') {
-            modal.remove();
-            document.removeEventListener('keydown', escHandler);
-        }
-    };
-    document.addEventListener('keydown', escHandler);
 }
 
 function getAuthHeaders() {
@@ -628,57 +547,33 @@ function formatCooldownTime(remainingSeconds) {
 }
 
 // =====================================================================
-// 凭证卡片创建（通用）
+// Credential Card Creation (General)
 // =====================================================================
 function createCredCard(credInfo, manager) {
     const div = document.createElement('div');
     const { status, filename } = credInfo;
     const managerType = manager.type;
 
-    // 卡片样式
+    // Card Style
     div.className = status.disabled ? 'cred-card disabled' : 'cred-card';
 
-    // 状态徽章
+    // Status Badge
     let statusBadges = '';
     statusBadges += status.disabled
-        ? '<span class="status-badge disabled">已禁用</span>'
-        : '<span class="status-badge enabled">已启用</span>';
+        ? '<span class="status-badge disabled">Disabled</span>'
+        : '<span class="status-badge enabled">Enabled</span>';
 
     if (status.error_codes && status.error_codes.length > 0) {
-        statusBadges += `<span class="error-codes">错误码: ${status.error_codes.join(', ')}</span>`;
+        statusBadges += `<span class="error-codes">Error Code: ${status.error_codes.join(', ')}</span>`;
         const autoBan = status.error_codes.filter(c => c === 400 || c === 403);
         if (autoBan.length > 0 && status.disabled) {
             statusBadges += '<span class="status-badge" style="background-color: #e74c3c; color: white;">AUTO_BAN</span>';
         }
     } else {
-        statusBadges += '<span class="status-badge" style="background-color: #28a745; color: white;">无错误</span>';
+        statusBadges += '<span class="status-badge" style="background-color: #28a745; color: white;">No Error</span>';
     }
 
-    // Preview状态显示 (仅对geminicli模式显示)
-    if (managerType !== 'antigravity' && credInfo.preview !== undefined) {
-        if (credInfo.preview) {
-            statusBadges += '<span class="status-badge" style="background-color: #28a745; color: white;" title="该凭证支持Preview模型">Preview: ON</span>';
-        } else {
-            statusBadges += '<span class="status-badge" style="background-color: #8aa5a2; color: white;" title="该凭证不支持Preview模型">Preview: OFF</span>';
-        }
-    }
-
-    // tier 状态显示 (geminicli 和 antigravity 都显示)
-    const tier = (credInfo.tier || 'pro').toString().toLowerCase();
-    const tierLabel = tier.toUpperCase();
-    const tierColor = tier === 'ultra' ? '#ff9800' : (tier === 'free' ? '#607d8b' : '#2e7d32');
-    statusBadges += `<span class="status-badge" style="background-color: ${tierColor}; color: white;" title="凭证等级: ${tierLabel}">Tier: ${tierLabel}</span>`;
-
-    // Credit 状态显示（仅 antigravity）
-    if (managerType === 'antigravity') {
-        if (credInfo.enable_credit) {
-            statusBadges += '<span class="status-badge" style="background-color: #2e7d32; color: white;" title="当前已开启Credit模式">Credit: ON</span>';
-        } else {
-            statusBadges += '<span class="status-badge" style="background-color: #616161; color: white;" title="当前已关闭Credit模式">Credit: OFF</span>';
-        }
-    }
-
-    // 模型级冷却状态
+    // Model-level Cooldown Status
     if (credInfo.model_cooldowns && Object.keys(credInfo.model_cooldowns).length > 0) {
         const currentTime = Date.now() / 1000;
         const activeCooldowns = Object.entries(credInfo.model_cooldowns)
@@ -696,44 +591,37 @@ function createCredCard(credInfo, manager) {
 
         if (activeCooldowns.length > 0) {
             activeCooldowns.slice(0, 2).forEach(item => {
-                statusBadges += `<span class="cooldown-badge" style="background-color: #17a2b8;" title="模型: ${item.fullModel}">⏰ ${item.model}: ${item.time}</span>`;
+                statusBadges += `<span class="cooldown-badge" style="background-color: #17a2b8;" title="Model: ${item.fullModel}">🔧 ${item.model}: ${item.time}</span>`;
             });
             if (activeCooldowns.length > 2) {
                 const remaining = activeCooldowns.length - 2;
                 const remainingModels = activeCooldowns.slice(2).map(i => `${i.fullModel}: ${i.time}`).join('\n');
-                statusBadges += `<span class="cooldown-badge" style="background-color: #17a2b8;" title="其他模型:\n${remainingModels}">+${remaining}</span>`;
+                statusBadges += `<span class="cooldown-badge" style="background-color: #17a2b8;" title="Other Models:\n${remainingModels}">+${remaining}</span>`;
             }
         }
     }
 
-    // 路径ID
+    // PathID
     const pathId = (managerType === 'antigravity' ? 'ag_' : '') + btoa(encodeURIComponent(filename)).replace(/[+/=]/g, '_');
 
-    // 操作按钮
+    // Operation Buttons
     const actionButtons = `
         ${status.disabled
-            ? `<button class="cred-btn enable" data-filename="${filename}" data-action="enable">启用</button>`
-            : `<button class="cred-btn disable" data-filename="${filename}" data-action="disable">禁用</button>`
+            ? `<button class="cred-btn enable" data-filename="${filename}" data-action="enable">Enable</button>`
+            : `<button class="cred-btn disable" data-filename="${filename}" data-action="disable">Disable</button>`
         }
-        <button class="cred-btn view" onclick="toggle${managerType === 'antigravity' ? 'Antigravity' : ''}CredDetails('${pathId}')">查看内容</button>
-        <button class="cred-btn download" onclick="download${managerType === 'antigravity' ? 'Antigravity' : ''}Cred('${filename}')">下载</button>
-        <button class="cred-btn email" onclick="fetch${managerType === 'antigravity' ? 'Antigravity' : ''}UserEmail('${filename}')">查看账号邮箱</button>
-        ${managerType === 'antigravity' ? `<button class="cred-btn" onclick="toggleAntigravityQuotaDetails('${pathId}')" title="查看该凭证的额度信息">查看额度</button>` : ''}
-        ${managerType === 'antigravity' ? (credInfo.enable_credit
-            ? `<button class="cred-btn" data-filename="${filename}" data-action="disable_credit" title="关闭该凭证的Credit模式">关闭 Credit</button>`
-            : `<button class="cred-btn" data-filename="${filename}" data-action="enable_credit" title="开启该凭证的Credit模式">开启 Credit</button>`
-        ) : ''}
-        ${managerType !== 'antigravity' ? `<button class="cred-btn" onclick="configurePreviewChannel('${filename}')" title="配置Preview通道，启用实验性功能">设置预览</button>` : ''}
-        <button class="cred-btn" onclick="verify${managerType === 'antigravity' ? 'Antigravity' : ''}ProjectId('${filename}')" title="重新获取Project ID，可恢复403错误">检验</button>
-        <button class="cred-btn" onclick="test${managerType === 'antigravity' ? 'Antigravity' : ''}Credential('${filename}')" title="测试凭证是否可用">消息测试</button>
-        <button class="cred-btn" onclick="toggle${managerType === 'antigravity' ? 'Antigravity' : ''}ErrorDetails('${pathId}')" title="查看该凭证的详细报错信息">查看报错</button>
-        <button class="cred-btn delete" data-filename="${filename}" data-action="delete">删除</button>
+        <button class="cred-btn view" onclick="toggle${managerType === 'antigravity' ? 'Antigravity' : ''}CredDetails('${pathId}')">View Content</button>
+        <button class="cred-btn download" onclick="download${managerType === 'antigravity' ? 'Antigravity' : ''}Cred('${filename}')">Download</button>
+        <button class="cred-btn email" onclick="fetch${managerType === 'antigravity' ? 'Antigravity' : ''}UserEmail('${filename}')">View Account Email</button>
+        ${managerType === 'antigravity' ? `<button class="cred-btn" style="background-color: #17a2b8;" onclick="toggleAntigravityQuotaDetails('${pathId}')" title="View quota info for this credential">View Quota</button>` : ''}
+        <button class="cred-btn" style="background-color: #ff9800;" onclick="verify${managerType === 'antigravity' ? 'Antigravity' : ''}ProjectId('${filename}')" title="Re-acquireProject ID, recoverable 403Error">Verify</button>
+        <button class="cred-btn delete" data-filename="${filename}" data-action="delete">Delete</button>
     `;
 
-    // 邮箱信息
+    // Email Info
     const emailInfo = credInfo.user_email
         ? `<div class="cred-email" style="font-size: 12px; color: #666; margin-top: 2px;">${credInfo.user_email}</div>`
-        : '<div class="cred-email" style="font-size: 12px; color: #999; margin-top: 2px; font-style: italic;">未获取邮箱</div>';
+        : '<div class="cred-email" style="font-size: 12px; color: #999; margin-top: 2px; font-style: italic;">Email not obtained</div>';
 
     const checkboxClass = manager.getElementId('file-checkbox');
 
@@ -750,27 +638,24 @@ function createCredCard(credInfo, manager) {
         </div>
         <div class="cred-actions">${actionButtons}</div>
         <div class="cred-details" id="details-${pathId}">
-            <div class="cred-content" data-filename="${filename}" data-loaded="false">点击"查看内容"按钮加载文件详情...</div>
-        </div>
-        <div class="cred-details" id="errors-${pathId}">
-            <div class="cred-content" data-filename="${filename}" data-loaded="false" style="background-color: #fff3cd; border-color: #ffc107;">点击"查看报错"按钮加载报错信息...</div>
+            <div class="cred-content" data-filename="${filename}" data-loaded="false">Click"View Content"button to load file details...</div>
         </div>
         ${managerType === 'antigravity' ? `
         <div class="cred-quota-details" id="quota-${pathId}" style="display: none;">
             <div class="cred-quota-content" data-filename="${filename}" data-loaded="false">
-                点击"查看额度"按钮加载额度信息...
+                Click"View Quota"button to load quota info...
             </div>
         </div>
         ` : ''}
     `;
 
-    // 添加事件监听
+    // Add event listener
     div.querySelectorAll('[data-filename][data-action]').forEach(button => {
         button.addEventListener('click', function () {
             const fn = this.getAttribute('data-filename');
             const action = this.getAttribute('data-action');
             if (action === 'delete') {
-                if (confirm(`确定要删除${managerType === 'antigravity' ? ' Antigravity ' : ''}凭证文件吗？\n${fn}`)) {
+                if (confirm(`Are you sure you want to delete${managerType === 'antigravity' ? ' Antigravity ' : ''}credential file?\n${fn}`)) {
                     manager.action(fn, action);
                 }
             } else {
@@ -783,7 +668,7 @@ function createCredCard(credInfo, manager) {
 }
 
 // =====================================================================
-// 凭证详情切换
+// Credential details toggle
 // =====================================================================
 async function toggleCredDetails(pathId) {
     await toggleCredDetailsCommon(pathId, AppState.creds);
@@ -805,7 +690,7 @@ async function toggleCredDetailsCommon(pathId, manager) {
         const loaded = contentDiv.getAttribute('data-loaded');
 
         if (loaded === 'false' && filename) {
-            contentDiv.textContent = '正在加载文件内容...';
+            contentDiv.textContent = 'Loading file content...';
 
             try {
                 const modeParam = manager.type === 'antigravity' ? 'mode=antigravity' : 'mode=geminicli';
@@ -818,23 +703,23 @@ async function toggleCredDetailsCommon(pathId, manager) {
                     contentDiv.textContent = JSON.stringify(data.content, null, 2);
                     contentDiv.setAttribute('data-loaded', 'true');
                 } else {
-                    contentDiv.textContent = '无法加载文件内容: ' + (data.error || data.detail || '未知错误');
+                    contentDiv.textContent = 'Unable to load file content: ' + (data.error || data.detail || 'Unknown Error');
                 }
             } catch (error) {
-                contentDiv.textContent = '加载文件内容失败: ' + error.message;
+                contentDiv.textContent = 'Failed to load file content: ' + error.message;
             }
         }
     }
 }
 
 // =====================================================================
-// 登录相关函数
+// Login-related functions
 // =====================================================================
 async function login() {
     const password = document.getElementById('loginPassword').value;
 
     if (!password) {
-        showStatus('请输入密码', 'error');
+        showStatus('Please enter password', 'error');
         return;
     }
 
@@ -852,14 +737,14 @@ async function login() {
             localStorage.setItem('gcli2api_auth_token', AppState.authToken);
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('mainSection').classList.remove('hidden');
-            showStatus('登录成功', 'success');
-            // 显示面板后初始化滑块
+            showStatus('Login successful', 'success');
+            // Initialize slider after showing panel
             requestAnimationFrame(() => initTabSlider());
         } else {
-            showStatus(`登录失败: ${data.detail || data.error || '未知错误'}`, 'error');
+            showStatus(`Login failed: ${data.detail || data.error || 'Unknown Error'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     }
 }
 
@@ -880,8 +765,8 @@ async function autoLogin() {
         if (response.ok) {
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('mainSection').classList.remove('hidden');
-            showStatus('自动登录成功', 'success');
-            // 显示面板后初始化滑块
+            showStatus('Auto-login successful', 'success');
+            // Initialize slider after showing panel
             requestAnimationFrame(() => initTabSlider());
             return true;
         } else if (response.status === 401) {
@@ -900,7 +785,7 @@ function logout() {
     AppState.authToken = '';
     document.getElementById('loginSection').classList.remove('hidden');
     document.getElementById('mainSection').classList.add('hidden');
-    showStatus('已退出登录', 'info');
+    showStatus('Logged out', 'info');
     const passwordInput = document.getElementById('loginPassword');
     if (passwordInput) passwordInput.value = '';
 }
@@ -910,38 +795,38 @@ function handlePasswordEnter(event) {
 }
 
 // =====================================================================
-// 标签页切换
+// Tab switching
 // =====================================================================
 
-// 更新滑块位置
+// Update slider position
 function updateTabSlider(targetTab, animate = true) {
     const slider = document.querySelector('.tab-slider');
     const tabs = document.querySelector('.tabs');
     if (!slider || !tabs || !targetTab) return;
 
-    // 获取按钮位置和容器宽度
+    // Get button position and container width
     const tabLeft = targetTab.offsetLeft;
     const tabWidth = targetTab.offsetWidth;
     const tabsWidth = tabs.scrollWidth;
 
-    // 使用 left 和 right 同时控制，确保动画同步
+    // Use left and right Control simultaneously to ensure animation synchronization
     const rightValue = tabsWidth - tabLeft - tabWidth;
 
     if (animate) {
         slider.style.left = `${tabLeft}px`;
         slider.style.right = `${rightValue}px`;
     } else {
-        // 首次加载时不使用动画
+        // Do not use animation on first load
         slider.style.transition = 'none';
         slider.style.left = `${tabLeft}px`;
         slider.style.right = `${rightValue}px`;
-        // 强制重绘后恢复过渡
+        // Restore transition after forced redraw
         slider.offsetHeight;
         slider.style.transition = '';
     }
 }
 
-// 初始化滑块位置
+// Initialize slider position
 function initTabSlider() {
     const activeTab = document.querySelector('.tab.active');
     if (activeTab) {
@@ -949,7 +834,7 @@ function initTabSlider() {
     }
 }
 
-// 页面加载和窗口大小变化时初始化滑块
+// Initialize slider on page load and window resize
 document.addEventListener('DOMContentLoaded', initTabSlider);
 window.addEventListener('resize', () => {
     const activeTab = document.querySelector('.tab.active');
@@ -957,30 +842,30 @@ window.addEventListener('resize', () => {
 });
 
 function switchTab(tabName) {
-    // 获取当前活动的内容区域
+    // Get current active content area
     const currentContent = document.querySelector('.tab-content.active');
     const targetContent = document.getElementById(tabName + 'Tab');
 
-    // 如果点击的是当前标签页，不做任何操作
+    // If the clicked tab is the current one
     if (currentContent === targetContent) return;
 
-    // 找到目标标签按钮
+    // Find target tab button
     const targetTab = event && event.target ? event.target :
         document.querySelector(`.tab[onclick*="'${tabName}'"]`);
 
-    // 移除所有标签页的active状态
+    // Remove from all tabsactiveStatus
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
 
-    // 添加当前点击标签的active状态
+    // Add to currently clicked tabactiveStatus
     if (targetTab) {
         targetTab.classList.add('active');
-        // 更新滑块位置（带动画）
+        // Update slider position (with animation)
         updateTabSlider(targetTab, true);
     }
 
-    // 淡出当前内容
+    // Fade out current content
     if (currentContent) {
-        // 设置淡出过渡
+        // Set fade-out transition
         currentContent.style.transition = 'opacity 0.18s ease-out, transform 0.18s ease-out';
         currentContent.style.opacity = '0';
         currentContent.style.transform = 'translateX(-12px)';
@@ -991,31 +876,31 @@ function switchTab(tabName) {
             currentContent.style.opacity = '';
             currentContent.style.transform = '';
 
-            // 淡入新内容
+            // Fade in new content
             if (targetContent) {
-                // 先设置初始状态（在添加 active 类之前）
+                // Set initial state first (before adding active class)
                 targetContent.style.opacity = '0';
                 targetContent.style.transform = 'translateX(12px)';
-                targetContent.style.transition = 'none'; // 暂时禁用过渡
+                targetContent.style.transition = 'none'; // Temporarily disable transition
 
-                // 添加 active 类使元素可见
+                // Add active class makes element visible
                 targetContent.classList.add('active');
 
-                // 使用双重 requestAnimationFrame 确保浏览器完成重绘
+                // Use double requestAnimationFrame Ensure browser completes redraw
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
-                        // 启用过渡并应用最终状态
+                        // Enable transition and apply final state
                         targetContent.style.transition = 'opacity 0.25s ease-out, transform 0.25s ease-out';
                         targetContent.style.opacity = '1';
                         targetContent.style.transform = 'translateX(0)';
 
-                        // 清理内联样式并执行数据加载
+                        // Clean up inline styles and perform data loading
                         setTimeout(() => {
                             targetContent.style.transition = '';
                             targetContent.style.opacity = '';
                             targetContent.style.transform = '';
 
-                            // 动画完成后触发数据加载
+                            // Trigger data loading after animation completes
                             triggerTabDataLoad(tabName);
                         }, 260);
                     });
@@ -1023,16 +908,16 @@ function switchTab(tabName) {
             }
         }, 180);
     } else {
-        // 如果没有当前内容（首次加载），直接显示目标内容
+        // If no current content (first load)
         if (targetContent) {
             targetContent.classList.add('active');
-            // 直接触发数据加载
+            // Trigger data loading directly
             triggerTabDataLoad(tabName);
         }
     }
 }
 
-// 标签页数据加载（从动画中分离出来）
+// Tab data loading (separated from animation)
 function triggerTabDataLoad(tabName) {
     if (tabName === 'manage') AppState.creds.refresh();
     if (tabName === 'antigravity-manage') AppState.antigravityCreds.refresh();
@@ -1042,7 +927,7 @@ function triggerTabDataLoad(tabName) {
 
 
 // =====================================================================
-// OAuth认证相关函数
+// OAuthAuthentication-related functions
 // =====================================================================
 async function startAuth() {
     const projectId = document.getElementById('projectId').value.trim();
@@ -1050,11 +935,11 @@ async function startAuth() {
 
     const btn = document.getElementById('getAuthBtn');
     btn.disabled = true;
-    btn.textContent = '正在获取认证链接...';
+    btn.textContent = 'Fetching authentication link...';
 
     try {
         const requestBody = projectId ? { project_id: projectId } : {};
-        showStatus(projectId ? '使用指定的项目ID生成认证链接...' : '将尝试自动检测项目ID，正在生成认证链接...', 'info');
+        showStatus(projectId ? 'Use specified projectIDGenerate authentication link...' : 'Will attempt to auto-detect projectID...', 'info');
 
         const response = await fetch('./auth/start', {
             method: 'POST',
@@ -1070,33 +955,33 @@ async function startAuth() {
             document.getElementById('authUrlSection').classList.remove('hidden');
 
             const msg = data.auto_project_detection
-                ? '认证链接已生成（将在认证完成后自动检测项目ID），请点击链接完成授权'
-                : `认证链接已生成（项目ID: ${data.detected_project_id}），请点击链接完成授权`;
+                ? 'Auth link generated (project will be auto-detected after authID)'
+                : `Auth link generated (ProjectID: ${data.detected_project_id})`;
             showStatus(msg, 'info');
             AppState.authInProgress = true;
         } else {
-            showStatus(`错误: ${data.error || '获取认证链接失败'}`, 'error');
+            showStatus(`Error: ${data.error || 'Failed to get authentication link'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = '获取认证链接';
+        btn.textContent = 'Get authentication link';
     }
 }
 
 async function getCredentials() {
     if (!AppState.authInProgress) {
-        showStatus('请先获取认证链接并完成授权', 'error');
+        showStatus('Please get the auth link and complete authorization first', 'error');
         return;
     }
 
     const btn = document.getElementById('getCredsBtn');
     btn.disabled = true;
-    btn.textContent = '等待OAuth回调中...';
+    btn.textContent = 'Waiting forOAuthIn callback...';
 
     try {
-        showStatus('正在等待OAuth回调，这可能需要一些时间...', 'info');
+        showStatus('WaitingOAuthcallback...', 'info');
 
         const requestBody = AppState.currentProjectId ? { project_id: AppState.currentProjectId } : {};
 
@@ -1112,63 +997,63 @@ async function getCredentials() {
             document.getElementById('credentialsContent').textContent = JSON.stringify(data.credentials, null, 2);
 
             const msg = data.auto_detected_project
-                ? `✅ 认证成功！项目ID已自动检测为: ${data.credentials.project_id}，文件已保存到: ${data.file_path}`
-                : `✅ 认证成功！文件已保存到: ${data.file_path}`;
+                ? `✅ Authentication successful! ProjectIDAuto-detected as: ${data.credentials.project_id}: ${data.file_path}`
+                : `✅ Authentication successful! File saved to: ${data.file_path}`;
             showStatus(msg, 'success');
 
             document.getElementById('credentialsSection').classList.remove('hidden');
             AppState.authInProgress = false;
         } else if (data.requires_project_selection && data.available_projects) {
-            let projectOptions = "请选择一个项目：\n\n";
+            let projectOptions = "Please select a project:\n\n";
             data.available_projects.forEach((project, index) => {
                 projectOptions += `${index + 1}. ${project.name} (${project.project_id})\n`;
             });
-            projectOptions += `\n请输入序号 (1-${data.available_projects.length}):`;
+            projectOptions += `\nPlease enter the serial number (1-${data.available_projects.length}):`;
 
             const selection = prompt(projectOptions);
             const projectIndex = parseInt(selection) - 1;
 
             if (projectIndex >= 0 && projectIndex < data.available_projects.length) {
                 AppState.currentProjectId = data.available_projects[projectIndex].project_id;
-                btn.textContent = '重新尝试获取认证文件';
-                showStatus(`使用选择的项目重新尝试...`, 'info');
+                btn.textContent = 'Retry fetching authentication file';
+                showStatus(`Retry with selected project...`, 'info');
                 setTimeout(() => getCredentials(), 1000);
                 return;
             } else {
-                showStatus('无效的选择，请重新开始认证', 'error');
+                showStatus('Invalid selection', 'error');
             }
         } else if (data.requires_manual_project_id) {
-            const userProjectId = prompt('无法自动检测项目ID，请手动输入您的Google Cloud项目ID:');
+            const userProjectId = prompt('Unable to auto-detect projectIDGoogle CloudProjectID:');
             if (userProjectId && userProjectId.trim()) {
                 AppState.currentProjectId = userProjectId.trim();
-                btn.textContent = '重新尝试获取认证文件';
-                showStatus('使用手动输入的项目ID重新尝试...', 'info');
+                btn.textContent = 'Retry fetching authentication file';
+                showStatus('Use manually entered projectIDRetry...', 'info');
                 setTimeout(() => getCredentials(), 1000);
                 return;
             } else {
-                showStatus('需要项目ID才能完成认证，请重新开始并输入正确的项目ID', 'error');
+                showStatus('Project requiredIDto complete authenticationID', 'error');
             }
         } else {
-            showStatus(`❌ 错误: ${data.error || '获取认证文件失败'}`, 'error');
+            showStatus(`❌ Error: ${data.error || 'Failed to get authentication file'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = '获取认证文件';
+        btn.textContent = 'Get authentication file';
     }
 }
 
 // =====================================================================
-// Antigravity 认证相关函数
+// Antigravity Authentication-related functions
 // =====================================================================
 async function startAntigravityAuth() {
     const btn = document.getElementById('getAntigravityAuthBtn');
     btn.disabled = true;
-    btn.textContent = '生成认证链接中...';
+    btn.textContent = 'Generating authentication link...';
 
     try {
-        showStatus('正在生成 Antigravity 认证链接...', 'info');
+        showStatus('Generating Antigravity Authentication link...', 'info');
 
         const response = await fetch('./auth/start', {
             method: 'POST',
@@ -1187,30 +1072,30 @@ async function startAntigravityAuth() {
             authUrlLink.textContent = data.auth_url;
             document.getElementById('antigravityAuthUrlSection').classList.remove('hidden');
 
-            showStatus('✅ Antigravity 认证链接已生成！请点击链接完成授权', 'success');
+            showStatus('✅ Antigravity Auth link generated! Please click the link to complete authorization', 'success');
         } else {
-            showStatus(`❌ 错误: ${data.error || '生成认证链接失败'}`, 'error');
+            showStatus(`❌ Error: ${data.error || 'Failed to generate authentication link'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = '获取 Antigravity 认证链接';
+        btn.textContent = 'Get Antigravity Authentication link';
     }
 }
 
 async function getAntigravityCredentials() {
     if (!AppState.antigravityAuthInProgress) {
-        showStatus('请先获取 Antigravity 认证链接并完成授权', 'error');
+        showStatus('Please get Antigravity auth link and complete authorization', 'error');
         return;
     }
 
     const btn = document.getElementById('getAntigravityCredsBtn');
     btn.disabled = true;
-    btn.textContent = '等待OAuth回调中...';
+    btn.textContent = 'Waiting forOAuthIn callback...';
 
     try {
-        showStatus('正在等待 Antigravity OAuth回调...', 'info');
+        showStatus('Waiting Antigravity OAuthCallback...', 'info');
 
         const response = await fetch('./auth/callback', {
             method: 'POST',
@@ -1224,15 +1109,15 @@ async function getAntigravityCredentials() {
             document.getElementById('antigravityCredsContent').textContent = JSON.stringify(data.credentials, null, 2);
             document.getElementById('antigravityCredsSection').classList.remove('hidden');
             AppState.antigravityAuthInProgress = false;
-            showStatus(`✅ Antigravity 认证成功！文件已保存到: ${data.file_path}`, 'success');
+            showStatus(`✅ Antigravity Authentication successful! File saved to: ${data.file_path}`, 'success');
         } else {
-            showStatus(`❌ 错误: ${data.error || '获取认证文件失败'}`, 'error');
+            showStatus(`❌ Error: ${data.error || 'Failed to get authentication file'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = '获取 Antigravity 凭证';
+        btn.textContent = 'Get Antigravity Credentials';
     }
 }
 
@@ -1248,7 +1133,7 @@ function downloadAntigravityCredentials() {
 }
 
 // =====================================================================
-// 回调URL处理
+// CallbackURLProcess
 // =====================================================================
 function toggleProjectIdSection() {
     const section = document.getElementById('projectIdSection');
@@ -1299,21 +1184,21 @@ async function processCallbackUrl() {
     const callbackUrl = document.getElementById('callbackUrlInput').value.trim();
 
     if (!callbackUrl) {
-        showStatus('请输入回调URL', 'error');
+        showStatus('Please enter callbackURL', 'error');
         return;
     }
 
     if (!callbackUrl.startsWith('http://') && !callbackUrl.startsWith('https://')) {
-        showStatus('请输入有效的URL（以http://或https://开头）', 'error');
+        showStatus('Please enter a validURL(withhttp://orhttps://start)', 'error');
         return;
     }
 
     if (!callbackUrl.includes('code=') || !callbackUrl.includes('state=')) {
-        showStatus('❌ 这不是有效的回调URL！请确保：\n1. 已完成Google OAuth授权\n2. 复制的是浏览器地址栏的完整URL\n3. URL包含code和state参数', 'error');
+        showStatus('❌ This is not a valid callbackURL! Please ensure:\n1. CompletedGoogle OAuthAuthorization\n2. Copied the full browser address barURL\n3. URLcontainscodeandstateParameters', 'error');
         return;
     }
 
-    showStatus('正在从回调URL获取凭证...', 'info');
+    showStatus('Getting credentials from callbackURLGet credentials...', 'info');
 
     try {
         const projectId = document.getElementById('projectId')?.value.trim() || null;
@@ -1327,24 +1212,24 @@ async function processCallbackUrl() {
         const result = await response.json();
 
         if (result.credentials) {
-            showStatus(result.message || '从回调URL获取凭证成功！', 'success');
+            showStatus(result.message || 'From callbackURLSuccessfully obtained credentials!', 'success');
             document.getElementById('credentialsContent').innerHTML = '<pre>' + JSON.stringify(result.credentials, null, 2) + '</pre>';
             document.getElementById('credentialsSection').classList.remove('hidden');
         } else if (result.requires_manual_project_id) {
-            showStatus('需要手动指定项目ID，请在高级选项中填入Google Cloud项目ID后重试', 'error');
+            showStatus('Project needs to be specified manuallyIDGoogle CloudProjectIDand try again', 'error');
         } else if (result.requires_project_selection) {
-            let msg = '<br><strong>可用项目：</strong><br>';
+            let msg = '<br><strong>Available projects:</strong><br>';
             result.available_projects.forEach(p => {
                 msg += `• ${p.name} (ID: ${p.project_id})<br>`;
             });
-            showStatus('检测到多个项目，请在高级选项中指定项目ID：' + msg, 'error');
+            showStatus('Multiple projects detectedID:' + msg, 'error');
         } else {
-            showStatus(result.error || '从回调URL获取凭证失败', 'error');
+            showStatus(result.error || 'From callbackURLFailed to get credentials', 'error');
         }
 
         document.getElementById('callbackUrlInput').value = '';
     } catch (error) {
-        showStatus(`从回调URL获取凭证失败: ${error.message}`, 'error');
+        showStatus(`From callbackURLFailed to get credentials: ${error.message}`, 'error');
     }
 }
 
@@ -1352,21 +1237,21 @@ async function processAntigravityCallbackUrl() {
     const callbackUrl = document.getElementById('antigravityCallbackUrlInput').value.trim();
 
     if (!callbackUrl) {
-        showStatus('请输入回调URL', 'error');
+        showStatus('Please enter callbackURL', 'error');
         return;
     }
 
     if (!callbackUrl.startsWith('http://') && !callbackUrl.startsWith('https://')) {
-        showStatus('请输入有效的URL（以http://或https://开头）', 'error');
+        showStatus('Please enter a validURL(withhttp://orhttps://start)', 'error');
         return;
     }
 
     if (!callbackUrl.includes('code=') || !callbackUrl.includes('state=')) {
-        showStatus('❌ 这不是有效的回调URL！请确保包含code和state参数', 'error');
+        showStatus('❌ This is not a valid callbackURL! Please ensure it containscodeandstateParameters', 'error');
         return;
     }
 
-    showStatus('正在从回调URL获取 Antigravity 凭证...', 'info');
+    showStatus('Getting credentials from callbackURLGet Antigravity Credentials...', 'info');
 
     try {
         const response = await fetch('./auth/callback-url', {
@@ -1378,23 +1263,23 @@ async function processAntigravityCallbackUrl() {
         const result = await response.json();
 
         if (result.credentials) {
-            showStatus(result.message || '从回调URL获取 Antigravity 凭证成功！', 'success');
+            showStatus(result.message || 'From callbackURLGet Antigravity Credentials successful!', 'success');
             document.getElementById('antigravityCredsContent').textContent = JSON.stringify(result.credentials, null, 2);
             document.getElementById('antigravityCredsSection').classList.remove('hidden');
         } else {
-            showStatus(result.error || '从回调URL获取 Antigravity 凭证失败', 'error');
+            showStatus(result.error || 'From callbackURLGet Antigravity Credentials failed', 'error');
         }
 
         document.getElementById('antigravityCallbackUrlInput').value = '';
     } catch (error) {
-        showStatus(`从回调URL获取 Antigravity 凭证失败: ${error.message}`, 'error');
+        showStatus(`From callbackURLGet Antigravity Credentials failed: ${error.message}`, 'error');
     }
 }
 
 // =====================================================================
-// 全局兼容函数（供HTML调用）
+// Global compatibility functions (forHTMLcalls)
 // =====================================================================
-// 普通凭证管理
+// Standard credential management
 function refreshCredsStatus() { AppState.creds.refresh(); }
 function applyStatusFilter() { AppState.creds.applyStatusFilter(); }
 function changePage(direction) { AppState.creds.changePage(direction); }
@@ -1430,9 +1315,9 @@ function downloadCred(filename) {
             a.download = filename;
             a.click();
             window.URL.revokeObjectURL(url);
-            showStatus(`已下载文件: ${filename}`, 'success');
+            showStatus(`File downloaded: ${filename}`, 'success');
         })
-        .catch(() => showStatus(`下载失败: ${filename}`, 'error'));
+        .catch(() => showStatus(`Download failed: ${filename}`, 'error'));
 }
 async function downloadAllCreds() {
     try {
@@ -1447,14 +1332,14 @@ async function downloadAllCreds() {
             a.download = 'credentials.zip';
             a.click();
             window.URL.revokeObjectURL(url);
-            showStatus('已下载所有凭证文件', 'success');
+            showStatus('All credential files downloaded', 'success');
         }
     } catch (error) {
-        showStatus(`打包下载失败: ${error.message}`, 'error');
+        showStatus(`Packaged download failed: ${error.message}`, 'error');
     }
 }
 
-// Antigravity凭证管理
+// AntigravityCredential Management
 function refreshAntigravityCredsList() { AppState.antigravityCreds.refresh(); }
 function applyAntigravityStatusFilter() { AppState.antigravityCreds.applyStatusFilter(); }
 function changeAntigravityPage(direction) { AppState.antigravityCreds.changePage(direction); }
@@ -1490,12 +1375,12 @@ function downloadAntigravityCred(filename) {
             a.download = filename;
             a.click();
             window.URL.revokeObjectURL(url);
-            showStatus(`✅ 已下载: ${filename}`, 'success');
+            showStatus(`✅ Downloaded: ${filename}`, 'success');
         })
-        .catch(() => showStatus(`下载失败: ${filename}`, 'error'));
+        .catch(() => showStatus(`Download failed: ${filename}`, 'error'));
 }
 function deleteAntigravityCred(filename) {
-    if (confirm(`确定要删除 ${filename} 吗？`)) {
+    if (confirm(`Are you sure you want to delete ${filename} ?`)) {
         AppState.antigravityCreds.action(filename, 'delete');
     }
 }
@@ -1510,14 +1395,14 @@ async function downloadAllAntigravityCreds() {
             a.download = `antigravity_credentials_${Date.now()}.zip`;
             a.click();
             window.URL.revokeObjectURL(url);
-            showStatus('✅ 所有Antigravity凭证已打包下载', 'success');
+            showStatus('✅ AllAntigravityCredentials packaged and downloaded', 'success');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     }
 }
 
-// 文件上传
+// File Upload
 function handleFileSelect(event) { AppState.uploadFiles.handleFileSelect(event); }
 function removeFile(index) { AppState.uploadFiles.removeFile(index); }
 function clearFiles() { AppState.uploadFiles.clearFiles(); }
@@ -1534,23 +1419,23 @@ function removeAntigravityFile(index) { AppState.antigravityUploadFiles.removeFi
 function clearAntigravityFiles() { AppState.antigravityUploadFiles.clearFiles(); }
 function uploadAntigravityFiles() { AppState.antigravityUploadFiles.upload(); }
 
-// 邮箱相关
-// 辅助函数：根据文件名更新卡片中的邮箱显示
+// Email related
+// Helper: Update email display in card based on filename
 function updateEmailDisplay(filename, email, managerType = 'normal') {
-    // 查找对应的凭证卡片
+    // Find corresponding credential card
     const containerId = managerType === 'antigravity' ? 'antigravityCredsList' : 'credsList';
     const container = document.getElementById(containerId);
     if (!container) return false;
 
-    // 通过 data-filename 找到对应的复选框，再找到其父卡片
+    // via data-filename Find corresponding checkbox
     const checkbox = container.querySelector(`input[data-filename="${filename}"]`);
     if (!checkbox) return false;
 
-    // 找到对应的 cred-card 元素
+    // find corresponding cred-card Element
     const card = checkbox.closest('.cred-card');
     if (!card) return false;
 
-    // 找到邮箱显示元素
+    // Find email display element
     const emailDiv = card.querySelector('.cred-email');
     if (emailDiv) {
         emailDiv.textContent = email;
@@ -1563,48 +1448,48 @@ function updateEmailDisplay(filename, email, managerType = 'normal') {
 
 async function fetchUserEmail(filename) {
     try {
-        showStatus('正在获取用户邮箱...', 'info');
+        showStatus('Fetching user email...', 'info');
         const response = await fetch(`./creds/fetch-email/${encodeURIComponent(filename)}`, {
             method: 'POST',
             headers: getAuthHeaders()
         });
         const data = await response.json();
         if (response.ok && data.user_email) {
-            showStatus(`成功获取邮箱: ${data.user_email}`, 'success');
-            // 直接更新卡片中的邮箱显示，不刷新整个列表
+            showStatus(`Email fetched successfully: ${data.user_email}`, 'success');
+            // Update email display in card directly without refreshing the list
             updateEmailDisplay(filename, data.user_email, 'normal');
         } else {
-            showStatus(data.message || '无法获取用户邮箱', 'error');
+            showStatus(data.message || 'Unable to fetch user email', 'error');
         }
     } catch (error) {
-        showStatus(`获取邮箱失败: ${error.message}`, 'error');
+        showStatus(`Failed to fetch email: ${error.message}`, 'error');
     }
 }
 
 async function fetchAntigravityUserEmail(filename) {
     try {
-        showStatus('正在获取用户邮箱...', 'info');
+        showStatus('Fetching user email...', 'info');
         const response = await fetch(`./creds/fetch-email/${encodeURIComponent(filename)}?mode=antigravity`, {
             method: 'POST',
             headers: getAuthHeaders()
         });
         const data = await response.json();
         if (response.ok && data.user_email) {
-            showStatus(`成功获取邮箱: ${data.user_email}`, 'success');
-            // 直接更新卡片中的邮箱显示，不刷新整个列表
+            showStatus(`Email fetched successfully: ${data.user_email}`, 'success');
+            // Update email display in card directly without refreshing the list
             updateEmailDisplay(filename, data.user_email, 'antigravity');
         } else {
-            showStatus(data.message || '无法获取用户邮箱', 'error');
+            showStatus(data.message || 'Unable to fetch user email', 'error');
         }
     } catch (error) {
-        showStatus(`获取邮箱失败: ${error.message}`, 'error');
+        showStatus(`Failed to fetch email: ${error.message}`, 'error');
     }
 }
 
 async function verifyProjectId(filename) {
     try {
-        // 显示加载状态
-        showStatus('🔍 正在检验Project ID，请稍候...', 'info');
+        // Show loading status
+        showStatus('🔍 VerifyingProject ID...', 'info');
 
         const response = await fetch(`./creds/verify-project/${encodeURIComponent(filename)}`, {
             method: 'POST',
@@ -1613,35 +1498,31 @@ async function verifyProjectId(filename) {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            // 成功时显示绿色成功消息和Project ID
-            const tierLine = data.subscription_tier ? `\nTier: ${data.subscription_tier}` : '';
-            const creditLine = data.credit_amount !== undefined && data.credit_amount !== null
-                ? `\n积分: ${data.credit_amount}`
-                : '';
-            const successMsg = `✅ 检验成功！\n文件: ${filename}\nProject ID: ${data.project_id}${tierLine}${creditLine}\n\n${data.message}`;
+            // Show green success message andProject ID
+            const successMsg = `✅ Verification successful!\nFile: ${filename}\nProject ID: ${data.project_id}\n\n${data.message}`;
             showStatus(successMsg.replace(/\n/g, '<br>'), 'success');
 
-            // 弹出成功提示
-            showMessageModal('检验成功', `✅ 检验成功！\n\n文件: ${filename}\nProject ID: ${data.project_id}${tierLine}${creditLine}\n\n${data.message}`, 'success');
+            // Pop up success tip
+            alert(`✅ Verification successful!\n\nFile: ${filename}\nProject ID: ${data.project_id}\n\n${data.message}`);
 
             await AppState.creds.refresh();
         } else {
-            // 失败时显示红色错误消息
-            const errorMsg = data.message || '检验失败';
+            // Show red error message on failure
+            const errorMsg = data.message || 'Verification failed';
             showStatus(`❌ ${errorMsg}`, 'error');
-            showMessageModal('检验失败', `❌ 检验失败\n\n${errorMsg}`, 'error');
+            alert(`❌ Verification failed\n\n${errorMsg}`);
         }
     } catch (error) {
-        const errorMsg = `检验失败: ${error.message}`;
+        const errorMsg = `Verification failed: ${error.message}`;
         showStatus(`❌ ${errorMsg}`, 'error');
-        showMessageModal('检验失败', `❌ ${errorMsg}`, 'error');
+        alert(`❌ ${errorMsg}`);
     }
 }
 
 async function verifyAntigravityProjectId(filename) {
     try {
-        // 显示加载状态
-        showStatus('🔍 正在检验Antigravity Project ID，请稍候...', 'info');
+        // Show loading status
+        showStatus('🔍 VerifyingAntigravity Project ID...', 'info');
 
         const response = await fetch(`./creds/verify-project/${encodeURIComponent(filename)}?mode=antigravity`, {
             method: 'POST',
@@ -1650,168 +1531,24 @@ async function verifyAntigravityProjectId(filename) {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            // 成功时显示绿色成功消息和Project ID
-            const tierLine = data.subscription_tier ? `\nTier: ${data.subscription_tier}` : '';
-            const creditLine = data.credit_amount !== undefined && data.credit_amount !== null
-                ? `\n积分: ${data.credit_amount}`
-                : '';
-            const successMsg = `✅ 检验成功！\n文件: ${filename}\nProject ID: ${data.project_id}${tierLine}${creditLine}\n\n${data.message}`;
+            // Show green success message andProject ID
+            const successMsg = `✅ Verification successful!\nFile: ${filename}\nProject ID: ${data.project_id}\n\n${data.message}`;
             showStatus(successMsg.replace(/\n/g, '<br>'), 'success');
 
-            // 弹出成功提示
-            showMessageModal('检验成功', `✅ Antigravity检验成功！\n\n文件: ${filename}\nProject ID: ${data.project_id}${tierLine}${creditLine}\n\n${data.message}`, 'success');
+            // Pop up success tip
+            alert(`✅ AntigravityVerification successful!\n\nFile: ${filename}\nProject ID: ${data.project_id}\n\n${data.message}`);
 
             await AppState.antigravityCreds.refresh();
         } else {
-            // 失败时显示红色错误消息
-            const errorMsg = data.message || '检验失败';
+            // Show red error message on failure
+            const errorMsg = data.message || 'Verification failed';
             showStatus(`❌ ${errorMsg}`, 'error');
-            showMessageModal('检验失败', `❌ 检验失败\n\n${errorMsg}`, 'error');
+            alert(`❌ Verification failed\n\n${errorMsg}`);
         }
     } catch (error) {
-        const errorMsg = `检验失败: ${error.message}`;
+        const errorMsg = `Verification failed: ${error.message}`;
         showStatus(`❌ ${errorMsg}`, 'error');
-        showMessageModal('检验失败', `❌ ${errorMsg}`, 'error');
-    }
-}
-
-async function testCredential(filename) {
-    try {
-        // 显示加载状态
-        showStatus('🧪 正在测试凭证，请稍候...', 'info');
-
-        const response = await fetch(`./creds/test/${encodeURIComponent(filename)}`, {
-            method: 'POST',
-            headers: getAuthHeaders()
-        });
-
-        // 解析JSON响应
-        const data = await response.json();
-
-        if (response.status === 200) {
-            // 凭证可用
-            const successMsg = `✅ 测试成功！\n文件: ${filename}\n状态: ${data.message || '凭证可用'} (${data.status_code || 200})`;
-            showStatus('✅ 测试成功！', 'success');
-            showMessageModal('测试成功', successMsg, 'success');
-            await AppState.creds.refresh();
-        }
-        else {
-            // 其他错误 - 显示完整错误信息
-            let errorDetails = `❌ 测试失败\n文件: ${filename}\n`;
-
-            // 如果有完整的错误响应，添加到详情中
-            if (data.error) {
-                try {
-                    // 尝试格式化JSON错误
-                    const errorObj = JSON.parse(data.error);
-                    errorDetails += `\n错误详情:\n${JSON.stringify(errorObj, null, 2)}`;
-                } catch {
-                    // 如果不是JSON，直接显示文本
-                    errorDetails += `\n错误详情:\n${data.error}`;
-                }
-            } else {
-                errorDetails += `错误码: ${data.status_code || response.status}`;
-            }
-
-            showStatus(`❌ 测试失败 - ${data.message || '错误码: ' + (data.status_code || response.status)}`, 'error');
-            showMessageModal('测试失败', errorDetails, 'error');
-        }
-    } catch (error) {
-        const errorMsg = `测试失败: ${error.message}`;
-        showStatus(`❌ ${errorMsg}`, 'error');
-        showMessageModal('测试失败', `❌ ${errorMsg}`, 'error');
-    }
-}
-
-async function testAntigravityCredential(filename) {
-    try {
-        // 显示加载状态
-        showStatus('🧪 正在测试Antigravity凭证，请稍候...', 'info');
-
-        const response = await fetch(`./creds/test/${encodeURIComponent(filename)}?mode=antigravity`, {
-            method: 'POST',
-            headers: getAuthHeaders()
-        });
-
-        // 解析JSON响应
-        const data = await response.json();
-
-        if (response.status === 200) {
-            // 凭证可用
-            const successMsg = `✅ 测试成功！\n文件: ${filename}\n状态: ${data.message || 'Antigravity凭证可用'} (${data.status_code || 200})`;
-            showStatus('✅ 测试成功！', 'success');
-            showMessageModal('测试成功', successMsg, 'success');
-            await AppState.antigravityCreds.refresh();
-        }
-        else {
-            // 其他错误 - 显示完整错误信息
-            let errorDetails = `❌ 测试失败\n文件: ${filename}\n`;
-
-            // 如果有完整的错误响应，添加到详情中
-            if (data.error) {
-                try {
-                    // 尝试格式化JSON错误
-                    const errorObj = JSON.parse(data.error);
-                    errorDetails += `\n错误详情:\n${JSON.stringify(errorObj, null, 2)}`;
-                } catch {
-                    // 如果不是JSON，直接显示文本
-                    errorDetails += `\n错误详情:\n${data.error}`;
-                }
-            } else {
-                errorDetails += `错误码: ${data.status_code || response.status}`;
-            }
-
-            showStatus(`❌ 测试失败 - ${data.message || '错误码: ' + (data.status_code || response.status)}`, 'error');
-            showMessageModal('测试失败', errorDetails, 'error');
-        }
-    } catch (error) {
-        const errorMsg = `测试失败: ${error.message}`;
-        showStatus(`❌ ${errorMsg}`, 'error');
-        showMessageModal('测试失败', `❌ ${errorMsg}`, 'error');
-    }
-}
-
-async function configurePreviewChannel(filename) {
-    try {
-        // 显示加载状态
-        showStatus('🔧 正在配置Preview通道，请稍候...', 'info');
-
-        const response = await fetch(`./creds/configure-preview/${encodeURIComponent(filename)}`, {
-            method: 'POST',
-            headers: getAuthHeaders()
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            // 配置成功
-            const successMsg = `✅ 配置成功！\n文件: ${filename}\n状态: ${data.message}`;
-            showStatus(successMsg.replace(/\n/g, '<br>'), 'success');
-            showMessageModal('Preview通道配置成功', `✅ Preview通道配置成功！\n\n文件: ${filename}\n\n${data.message}\n\nSetting ID: ${data.setting_id || 'N/A'}\nBinding ID: ${data.binding_id || 'N/A'}`, 'success');
-
-            // 刷新凭证列表
-            await AppState.creds.refresh();
-        } else {
-            // 配置失败
-            const errorMsg = data.message || '配置失败';
-            const errorDetail = data.error || '';
-            const step = data.step || '';
-
-            let alertMsg = `❌ Preview通道配置失败\n\n文件: ${filename}\n\n${errorMsg}`;
-            if (step) {
-                alertMsg += `\n失败步骤: ${step}`;
-            }
-            if (errorDetail) {
-                alertMsg += `\n\n错误详情: ${errorDetail}`;
-            }
-
-            showStatus(`❌ ${errorMsg}`, 'error');
-            showMessageModal('Preview通道配置失败', alertMsg, 'error');
-        }
-    } catch (error) {
-        const errorMsg = `配置Preview通道失败: ${error.message}`;
-        showStatus(`❌ ${errorMsg}`, 'error');
-        showMessageModal('配置Preview通道失败', `❌ ${errorMsg}`, 'error');
+        alert(`❌ ${errorMsg}`);
     }
 }
 
@@ -1819,22 +1556,23 @@ async function toggleAntigravityQuotaDetails(pathId) {
     const quotaDetails = document.getElementById('quota-' + pathId);
     if (!quotaDetails) return;
 
-    // 切换显示状态
+    // Toggle display status
     const isShowing = quotaDetails.style.display === 'block';
 
     if (isShowing) {
-        // 收起
+        // Collapse
         quotaDetails.style.display = 'none';
     } else {
-        // 展开
+        // Expand
         quotaDetails.style.display = 'block';
 
         const contentDiv = quotaDetails.querySelector('.cred-quota-content');
         const filename = contentDiv.getAttribute('data-filename');
+        const loaded = contentDiv.getAttribute('data-loaded');
 
-        // 每次展开都重新加载数据
-        if (filename) {
-            contentDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">📊 正在加载额度信息...</div>';
+        // Load data if not already loaded
+        if (loaded === 'false' && filename) {
+            contentDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">📊 Loading quota information...</div>';
 
             try {
                 const response = await fetch(`./creds/quota/${encodeURIComponent(filename)}?mode=antigravity`, {
@@ -1844,14 +1582,14 @@ async function toggleAntigravityQuotaDetails(pathId) {
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    // 成功时渲染美化的额度信息
+                    // Render beautified quota info on success
                     const models = data.models || {};
 
                     if (Object.keys(models).length === 0) {
                         contentDiv.innerHTML = `
                             <div style="text-align: center; padding: 20px; color: #999;">
                                 <div style="font-size: 48px; margin-bottom: 10px;">📊</div>
-                                <div>暂无额度信息</div>
+                                <div>No quota information available</div>
                             </div>
                         `;
                     } else {
@@ -1859,32 +1597,32 @@ async function toggleAntigravityQuotaDetails(pathId) {
                             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 8px 8px 0 0; margin: -10px -10px 15px -10px;">
                                 <h4 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
                                     <span style="font-size: 20px;">📊</span>
-                                    <span>额度信息详情</span>
+                                    <span>Quota information details</span>
                                 </h4>
-                                <div style="font-size: 12px; opacity: 0.9; margin-top: 5px;">文件: ${filename}</div>
+                                <div style="font-size: 12px; opacity: 0.9; margin-top: 5px;">File: ${filename}</div>
                             </div>
                             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
                         `;
 
                         for (const [modelName, quotaData] of Object.entries(models)) {
-                            // 后端返回的是剩余比例 (0-1)，不是绝对数量
+                            // Backend returns remaining ratio (0-1)
                             const remainingFraction = quotaData.remaining || 0;
                             const resetTime = quotaData.resetTime || 'N/A';
 
-                            // 计算已使用百分比（1 - 剩余比例）
+                            // Calculate used percentage (1 - remaining ratio)
                             const usedPercentage = Math.round((1 - remainingFraction) * 100);
                             const remainingPercentage = Math.round(remainingFraction * 100);
 
-                            // 根据使用情况选择颜色
-                            let percentageColor = '#28a745'; // 绿色：使用少
-                            if (usedPercentage >= 90) percentageColor = '#dc3545'; // 红色：使用多
-                            else if (usedPercentage >= 70) percentageColor = '#ffc107'; // 黄色：使用较多
-                            else if (usedPercentage >= 50) percentageColor = '#17a2b8'; // 蓝色：使用中等
+                            // Select color based on usage
+                            let percentageColor = '#28a745'; // Green: Low usage
+                            if (usedPercentage >= 90) percentageColor = '#dc3545'; // Red: High usage
+                            else if (usedPercentage >= 70) percentageColor = '#ffc107'; // Yellow: Moderate-high usage
+                            else if (usedPercentage >= 50) percentageColor = '#17a2b8'; // Blue: Medium usage
 
                             quotaHTML += `
                                 <div style="background: white; border-left: 4px solid ${percentageColor}; border-radius: 4px; padding: 8px 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                        <div style="font-weight: bold; color: #333; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px;" title="${modelName} - 剩余${remainingPercentage}% - ${resetTime}">
+                                        <div style="font-weight: bold; color: #333; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px;" title="${modelName} - Remaining${remainingPercentage}% - ${resetTime}">
                                             ${modelName}
                                         </div>
                                         <div style="font-size: 13px; font-weight: bold; color: ${percentageColor}; white-space: nowrap;">
@@ -1905,14 +1643,15 @@ async function toggleAntigravityQuotaDetails(pathId) {
                         contentDiv.innerHTML = quotaHTML;
                     }
 
-                    showStatus('✅ 成功加载额度信息', 'success');
+                    contentDiv.setAttribute('data-loaded', 'true');
+                    showStatus('✅ Quota information loaded successfully', 'success');
                 } else {
-                    // 失败时显示错误
-                    const errorMsg = data.error || '获取额度信息失败';
+                    // Show error on failure
+                    const errorMsg = data.error || 'Failed to get quota information';
                     contentDiv.innerHTML = `
                         <div style="text-align: center; padding: 20px; color: #dc3545;">
                             <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
-                            <div style="font-weight: bold; margin-bottom: 5px;">获取额度信息失败</div>
+                            <div style="font-weight: bold; margin-bottom: 5px;">Failed to get quota information</div>
                             <div style="font-size: 13px; color: #666;">${errorMsg}</div>
                         </div>
                     `;
@@ -1922,207 +1661,31 @@ async function toggleAntigravityQuotaDetails(pathId) {
                 contentDiv.innerHTML = `
                     <div style="text-align: center; padding: 20px; color: #dc3545;">
                         <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
-                        <div style="font-weight: bold; margin-bottom: 5px;">网络错误</div>
+                        <div style="font-weight: bold; margin-bottom: 5px;">Network Error</div>
                         <div style="font-size: 13px; color: #666;">${error.message}</div>
                     </div>
                 `;
-                showStatus(`❌ 获取额度信息失败: ${error.message}`, 'error');
+                showStatus(`❌ Failed to get quota information: ${error.message}`, 'error');
             }
         }
     }
-}
-
-// =====================================================================
-// 查看报错详情
-// =====================================================================
-async function toggleErrorDetails(pathId) {
-    await toggleErrorDetailsCommon(pathId, AppState.creds);
-}
-
-async function toggleAntigravityErrorDetails(pathId) {
-    await toggleErrorDetailsCommon(pathId, AppState.antigravityCreds);
-}
-
-async function toggleErrorDetailsCommon(pathId, manager) {
-    const errorDetails = document.getElementById('errors-' + pathId);
-    if (!errorDetails) return;
-
-    // 切换显示状态
-    const isShowing = errorDetails.classList.toggle('show');
-
-    if (isShowing) {
-        const contentDiv = errorDetails.querySelector('.cred-content');
-        const filename = contentDiv.getAttribute('data-filename');
-
-        // 每次展开都重新加载数据
-        if (filename) {
-            contentDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">⏳ 正在加载报错信息...</div>';
-
-            try {
-                const modeParam = manager.type === 'antigravity' ? 'mode=antigravity' : 'mode=geminicli';
-                const response = await fetch(`./creds/errors/${encodeURIComponent(filename)}?${modeParam}`, {
-                    method: 'GET',
-                    headers: getAuthHeaders()
-                });
-                const data = await response.json();
-
-                if (response.ok) {
-                    const errorCodes = data.error_codes || [];
-                    const errorMessages = data.error_messages || {};
-
-                    if (errorCodes.length === 0) {
-                        contentDiv.innerHTML = `
-                            <div style="text-align: center; padding: 20px; color: #28a745;">
-                                <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
-                                <div style="font-weight: bold;">无报错记录</div>
-                                <div style="font-size: 12px; color: #666; margin-top: 8px;">该凭证运行正常</div>
-                            </div>
-                        `;
-                    } else {
-                        let errorHTML = '';
-
-                        // 遍历所有错误码，从 errorMessages 对象中获取对应消息
-                        errorCodes.forEach((errorCode) => {
-                            const messageStr = errorMessages[errorCode] || '无详细信息';
-
-                            // 提取核心错误消息和详细信息
-                            let displayMsg = messageStr;
-                            let detailsHtml = '';
-
-                            try {
-                                // 尝试解析 JSON 格式的 message
-                                const parsedMsg = JSON.parse(messageStr);
-                                if (parsedMsg.error) {
-                                    // 显示核心错误信息
-                                    if (parsedMsg.error.message) {
-                                        displayMsg = parsedMsg.error.message;
-                                    }
-
-                                    // 如果有 details 字段，也显示出来
-                                    if (parsedMsg.error.details && Array.isArray(parsedMsg.error.details)) {
-                                        detailsHtml = '<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ddd;">';
-                                        detailsHtml += '<div style="font-size: 12px; color: #666; margin-bottom: 5px;">详细信息:</div>';
-
-                                        parsedMsg.error.details.forEach((detail, idx) => {
-                                            detailsHtml += '<div style="font-size: 12px; margin-left: 10px; margin-bottom: 5px;">';
-
-                                            // 显示 @type
-                                            if (detail['@type']) {
-                                                const highlightedType = highlightHttpLinks(escapeHtml(detail['@type']));
-                                                detailsHtml += `<div style="color: #007bff;">类型: ${highlightedType}</div>`;
-                                            }
-
-                                            // 显示 reason
-                                            if (detail.reason) {
-                                                detailsHtml += `<div style="color: #dc3545;">原因: ${escapeHtml(detail.reason)}</div>`;
-                                            }
-
-                                            // 显示 metadata（如 quotaResetTimeStamp）
-                                            if (detail.metadata) {
-                                                detailsHtml += '<div style="margin-left: 10px; margin-top: 3px;">';
-                                                for (const [key, value] of Object.entries(detail.metadata)) {
-                                                    const highlightedValue = highlightHttpLinks(escapeHtml(String(value)));
-                                                    detailsHtml += `<div style="font-family: monospace; color: #333;">${escapeHtml(key)}: ${highlightedValue}</div>`;
-                                                }
-                                                detailsHtml += '</div>';
-                                            }
-
-                                            detailsHtml += '</div>';
-                                        });
-
-                                        detailsHtml += '</div>';
-                                    }
-
-                                    // 如果有 status 字段，也显示
-                                    if (parsedMsg.error.status) {
-                                        if (!detailsHtml) {
-                                            detailsHtml = '<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ddd;">';
-                                        }
-                                        detailsHtml += `<div style="font-size: 12px; color: #666;">状态: ${escapeHtml(parsedMsg.error.status)}</div>`;
-                                        if (!parsedMsg.error.details) {
-                                            detailsHtml += '</div>';
-                                        }
-                                    }
-                                }
-                            } catch (e) {
-                                // 如果不是 JSON 格式，直接使用原始消息
-                            }
-
-                            // 对消息中的HTTP链接进行高亮处理
-                            const highlightedMsg = highlightHttpLinks(escapeHtml(displayMsg));
-
-                            errorHTML += `
-                                <div style="padding: 12px; margin-bottom: 10px; border-left: 3px solid #dc3545; background-color: #f8f9fa;">
-                                    <div style="font-weight: bold; color: #dc3545; margin-bottom: 8px;">错误码: ${errorCode}</div>
-                                    <div style="line-height: 1.6; color: #333; white-space: pre-wrap; word-break: break-word;">
-                                        ${highlightedMsg}
-                                    </div>
-                                    ${detailsHtml}
-                                </div>
-                            `;
-                        });
-
-                        contentDiv.innerHTML = errorHTML;
-                    }
-
-                    showStatus('✅ 成功加载报错信息', 'success');
-                } else {
-                    // 失败时显示错误
-                    const errorMsg = data.detail || data.error || '获取报错信息失败';
-                    contentDiv.innerHTML = `
-                        <div style="text-align: center; padding: 20px; color: #dc3545;">
-                            <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
-                            <div style="font-weight: bold;">加载失败</div>
-                            <div style="font-size: 12px; margin-top: 8px;">${errorMsg}</div>
-                        </div>
-                    `;
-                    showStatus(`❌ 获取报错信息失败: ${errorMsg}`, 'error');
-                }
-            } catch (error) {
-                contentDiv.innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: #dc3545;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
-                        <div style="font-weight: bold;">网络错误</div>
-                        <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
-                    </div>
-                `;
-                showStatus(`❌ 获取报错信息失败: ${error.message}`, 'error');
-            }
-        }
-    }
-}
-
-// HTML转义函数
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// 高亮HTTP链接函数
-function highlightHttpLinks(text) {
-    // 匹配 http:// 或 https:// 开头的URL
-    const urlRegex = /(https?:\/\/[^\s<>"]+)/gi;
-    return text.replace(urlRegex, function(url) {
-        return `<a href="${url}" target="_blank" style="color: #007bff; text-decoration: underline; word-break: break-all;" title="点击打开: ${url}">${url}</a>`;
-    });
 }
 
 async function batchVerifyProjectIds() {
     const selectedFiles = Array.from(AppState.creds.selectedFiles);
     if (selectedFiles.length === 0) {
-        showStatus('❌ 请先选择要检验的凭证', 'error');
-        showMessageModal('提示', '请先选择要检验的凭证', 'error');
+        showStatus('❌ Please select credentials to verify first', 'error');
+        alert('Please select credentials to verify first');
         return;
     }
 
-    if (!confirm(`确定要批量检验 ${selectedFiles.length} 个凭证的Project ID吗？\n\n将并行检验以加快速度。`)) {
+    if (!confirm(`Are you sure you want to batch verify ${selectedFiles.length} credentials'Project ID?\n\nParallel verification will be used to speed up.`)) {
         return;
     }
 
-    showStatus(`🔍 正在并行检验 ${selectedFiles.length} 个凭证，请稍候...`, 'info');
+    showStatus(`🔍 Parallel verification in progress ${selectedFiles.length} credentials...`, 'info');
 
-    // 并行执行所有检验请求
+    // Execute all verification requests in parallel
     const promises = selectedFiles.map(async (filename) => {
         try {
             const response = await fetch(`./creds/verify-project/${encodeURIComponent(filename)}`, {
@@ -2132,25 +1695,19 @@ async function batchVerifyProjectIds() {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                return {
-                    success: true,
-                    filename,
-                    projectId: data.project_id,
-                    creditAmount: data.credit_amount,
-                    message: data.message
-                };
+                return { success: true, filename, projectId: data.project_id, message: data.message };
             } else {
-                return { success: false, filename, error: data.message || '失败' };
+                return { success: false, filename, error: data.message || 'Failed' };
             }
         } catch (error) {
             return { success: false, filename, error: error.message };
         }
     });
 
-    // 等待所有请求完成
+    // Wait for all requests to complete
     const results = await Promise.all(promises);
 
-    // 统计结果
+    // Statistics results
     let successCount = 0;
     let failCount = 0;
     const resultMessages = [];
@@ -2158,10 +1715,7 @@ async function batchVerifyProjectIds() {
     results.forEach(result => {
         if (result.success) {
             successCount++;
-            const creditSuffix = result.creditAmount !== undefined && result.creditAmount !== null
-                ? ` (积分: ${result.creditAmount})`
-                : '';
-            resultMessages.push(`✅ ${result.filename}: ${result.projectId}${creditSuffix}`);
+            resultMessages.push(`✅ ${result.filename}: ${result.projectId}`);
         } else {
             failCount++;
             resultMessages.push(`❌ ${result.filename}: ${result.error}`);
@@ -2170,37 +1724,35 @@ async function batchVerifyProjectIds() {
 
     await AppState.creds.refresh();
 
-    const summary = `批量检验完成！\n\n成功: ${successCount} 个\n失败: ${failCount} 个\n总计: ${selectedFiles.length} 个\n\n详细结果:\n${resultMessages.join('\n')}`;
+    const summary = `Batch verification complete!\n\nSuccess: ${successCount} units\nFailed: ${failCount} units\nTotal: ${selectedFiles.length} units\n\nDetailed results:\n${resultMessages.join('\n')}`;
 
     if (failCount === 0) {
-        showStatus(`✅ 全部检验成功！成功检验 ${successCount}/${selectedFiles.length} 个凭证`, 'success');
-        showMessageModal('批量检验完成', summary, 'success');
+        showStatus(`✅ All verifications successful! Successfully verified ${successCount}/${selectedFiles.length} credentials`, 'success');
     } else if (successCount === 0) {
-        showStatus(`❌ 全部检验失败！失败 ${failCount}/${selectedFiles.length} 个凭证`, 'error');
-        showMessageModal('批量检验完成', summary, 'error');
+        showStatus(`❌ All verifications failed! Failed ${failCount}/${selectedFiles.length} credentials`, 'error');
     } else {
-        showStatus(`⚠️ 批量检验完成：成功 ${successCount}/${selectedFiles.length} 个，失败 ${failCount} 个`, 'info');
-        showMessageModal('批量检验完成', summary, 'info');
+        showStatus(`⚠️ Batch verification complete: Success ${successCount}/${selectedFiles.length} files, failed ${failCount} units`, 'info');
     }
 
     console.log(summary);
+    alert(summary);
 }
 
 async function batchVerifyAntigravityProjectIds() {
     const selectedFiles = Array.from(AppState.antigravityCreds.selectedFiles);
     if (selectedFiles.length === 0) {
-        showStatus('❌ 请先选择要检验的Antigravity凭证', 'error');
-        showMessageModal('提示', '请先选择要检验的Antigravity凭证', 'error');
+        showStatus('❌ Please select theAntigravityCredentials', 'error');
+        alert('Please select theAntigravityCredentials');
         return;
     }
 
-    if (!confirm(`确定要批量检验 ${selectedFiles.length} 个Antigravity凭证的Project ID吗？\n\n将并行检验以加快速度。`)) {
+    if (!confirm(`Are you sure you want to batch verify ${selectedFiles.length} unitsAntigravitycredentials'Project ID?\n\nParallel verification will be used to speed up.`)) {
         return;
     }
 
-    showStatus(`🔍 正在并行检验 ${selectedFiles.length} 个Antigravity凭证，请稍候...`, 'info');
+    showStatus(`🔍 Parallel verification in progress ${selectedFiles.length} unitsAntigravitycredentials...`, 'info');
 
-    // 并行执行所有检验请求
+    // Execute all verification requests in parallel
     const promises = selectedFiles.map(async (filename) => {
         try {
             const response = await fetch(`./creds/verify-project/${encodeURIComponent(filename)}?mode=antigravity`, {
@@ -2210,25 +1762,19 @@ async function batchVerifyAntigravityProjectIds() {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                return {
-                    success: true,
-                    filename,
-                    projectId: data.project_id,
-                    creditAmount: data.credit_amount,
-                    message: data.message
-                };
+                return { success: true, filename, projectId: data.project_id, message: data.message };
             } else {
-                return { success: false, filename, error: data.message || '失败' };
+                return { success: false, filename, error: data.message || 'Failed' };
             }
         } catch (error) {
             return { success: false, filename, error: error.message };
         }
     });
 
-    // 等待所有请求完成
+    // Wait for all requests to complete
     const results = await Promise.all(promises);
 
-    // 统计结果
+    // Statistics results
     let successCount = 0;
     let failCount = 0;
     const resultMessages = [];
@@ -2236,10 +1782,7 @@ async function batchVerifyAntigravityProjectIds() {
     results.forEach(result => {
         if (result.success) {
             successCount++;
-            const creditSuffix = result.creditAmount !== undefined && result.creditAmount !== null
-                ? ` (积分: ${result.creditAmount})`
-                : '';
-            resultMessages.push(`✅ ${result.filename}: ${result.projectId}${creditSuffix}`);
+            resultMessages.push(`✅ ${result.filename}: ${result.projectId}`);
         } else {
             failCount++;
             resultMessages.push(`❌ ${result.filename}: ${result.error}`);
@@ -2248,215 +1791,131 @@ async function batchVerifyAntigravityProjectIds() {
 
     await AppState.antigravityCreds.refresh();
 
-    const summary = `Antigravity批量检验完成！\n\n成功: ${successCount} 个\n失败: ${failCount} 个\n总计: ${selectedFiles.length} 个\n\n详细结果:\n${resultMessages.join('\n')}`;
+    const summary = `AntigravityBatch verification complete!\n\nSuccess: ${successCount} units\nFailed: ${failCount} units\nTotal: ${selectedFiles.length} units\n\nDetailed results:\n${resultMessages.join('\n')}`;
 
     if (failCount === 0) {
-        showStatus(`✅ 全部检验成功！成功检验 ${successCount}/${selectedFiles.length} 个Antigravity凭证`, 'success');
-        showMessageModal('Antigravity批量检验完成', summary, 'success');
+        showStatus(`✅ All verifications successful! Successfully verified ${successCount}/${selectedFiles.length} unitsAntigravityCredentials`, 'success');
     } else if (successCount === 0) {
-        showStatus(`❌ 全部检验失败！失败 ${failCount}/${selectedFiles.length} 个Antigravity凭证`, 'error');
-        showMessageModal('Antigravity批量检验完成', summary, 'error');
+        showStatus(`❌ All verifications failed! Failed ${failCount}/${selectedFiles.length} unitsAntigravityCredentials`, 'error');
     } else {
-        showStatus(`⚠️ 批量检验完成：成功 ${successCount}/${selectedFiles.length} 个，失败 ${failCount} 个`, 'info');
-        showMessageModal('Antigravity批量检验完成', summary, 'info');
+        showStatus(`⚠️ Batch verification complete: Success ${successCount}/${selectedFiles.length} files, failed ${failCount} units`, 'info');
     }
 
     console.log(summary);
-}
-
-async function batchConfigurePreview() {
-    const selectedFiles = Array.from(AppState.creds.selectedFiles);
-    if (selectedFiles.length === 0) {
-        showStatus('❌ 请先选择要配置Preview的凭证', 'error');
-        showMessageModal('提示', '请先选择要配置Preview的凭证', 'error');
-        return;
-    }
-
-    if (!confirm(`确定要为 ${selectedFiles.length} 个凭证批量设置Preview通道吗？\n\n将并行配置以加快速度。`)) {
-        return;
-    }
-
-    showStatus(`🔧 正在为 ${selectedFiles.length} 个凭证配置Preview通道，请稍候...`, 'info');
-
-    // 并行执行所有配置请求
-    const promises = selectedFiles.map(async (filename) => {
-        try {
-            const response = await fetch(`./creds/configure-preview/${encodeURIComponent(filename)}`, {
-                method: 'POST',
-                headers: getAuthHeaders()
-            });
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                return {
-                    success: true,
-                    filename,
-                    message: data.message,
-                    setting_id: data.setting_id,
-                    binding_id: data.binding_id
-                };
-            } else {
-                return {
-                    success: false,
-                    filename,
-                    error: data.message || '配置失败',
-                    step: data.step,
-                    errorDetail: data.error
-                };
-            }
-        } catch (error) {
-            return { success: false, filename, error: error.message };
-        }
-    });
-
-    // 等待所有请求完成
-    const results = await Promise.all(promises);
-
-    // 统计结果
-    let successCount = 0;
-    let failCount = 0;
-    const resultMessages = [];
-
-    results.forEach(result => {
-        if (result.success) {
-            successCount++;
-            resultMessages.push(`✅ ${result.filename}: ${result.message || '配置成功'}`);
-        } else {
-            failCount++;
-            const errorMsg = result.step ? `${result.error} (步骤: ${result.step})` : result.error;
-            resultMessages.push(`❌ ${result.filename}: ${errorMsg}`);
-        }
-    });
-
-    await AppState.creds.refresh();
-
-    const summary = `批量配置Preview通道完成！\n\n成功: ${successCount} 个\n失败: ${failCount} 个\n总计: ${selectedFiles.length} 个\n\n详细结果:\n${resultMessages.join('\n')}`;
-
-    if (failCount === 0) {
-        showStatus(`✅ 全部配置成功！成功配置 ${successCount}/${selectedFiles.length} 个凭证的Preview通道`, 'success');
-        showMessageModal('批量配置Preview通道完成', summary, 'success');
-    } else if (successCount === 0) {
-        showStatus(`❌ 全部配置失败！失败 ${failCount}/${selectedFiles.length} 个凭证`, 'error');
-        showMessageModal('批量配置Preview通道完成', summary, 'error');
-    } else {
-        showStatus(`⚠️ 批量配置完成：成功 ${successCount}/${selectedFiles.length} 个，失败 ${failCount} 个`, 'info');
-        showMessageModal('批量配置Preview通道完成', summary, 'info');
-    }
-
-    console.log(summary);
+    alert(summary);
 }
 
 
 async function refreshAllEmails() {
-    if (!confirm('确定要刷新所有凭证的用户邮箱吗？这可能需要一些时间。')) return;
+    if (!confirm('Are you sure you want to refresh all user emails? This may take some time.')) return;
 
     try {
-        showStatus('正在刷新所有用户邮箱...', 'info');
+        showStatus('Refreshing all user emails...', 'info');
         const response = await fetch('./creds/refresh-all-emails', {
             method: 'POST',
             headers: getAuthHeaders()
         });
         const data = await response.json();
         if (response.ok) {
-            showStatus(`邮箱刷新完成：成功获取 ${data.success_count}/${data.total_count} 个邮箱地址`, 'success');
+            showStatus(`Email refresh complete: Successfully fetched ${data.success_count}/${data.total_count} email addresses`, 'success');
             await AppState.creds.refresh();
         } else {
-            showStatus(data.message || '邮箱刷新失败', 'error');
+            showStatus(data.message || 'Email refresh failed', 'error');
         }
     } catch (error) {
-        showStatus(`邮箱刷新网络错误: ${error.message}`, 'error');
+        showStatus(`Email refresh network error: ${error.message}`, 'error');
     }
 }
 
 async function refreshAllAntigravityEmails() {
-    if (!confirm('确定要刷新所有Antigravity凭证的用户邮箱吗？这可能需要一些时间。')) return;
+    if (!confirm('Are you sure you want to refresh allAntigravitycredentials' user email? This may take some time.')) return;
 
     try {
-        showStatus('正在刷新所有用户邮箱...', 'info');
+        showStatus('Refreshing all user emails...', 'info');
         const response = await fetch('./creds/refresh-all-emails?mode=antigravity', {
             method: 'POST',
             headers: getAuthHeaders()
         });
         const data = await response.json();
         if (response.ok) {
-            showStatus(`邮箱刷新完成：成功获取 ${data.success_count}/${data.total_count} 个邮箱地址`, 'success');
+            showStatus(`Email refresh complete: Successfully fetched ${data.success_count}/${data.total_count} email addresses`, 'success');
             await AppState.antigravityCreds.refresh();
         } else {
-            showStatus(data.message || '邮箱刷新失败', 'error');
+            showStatus(data.message || 'Email refresh failed', 'error');
         }
     } catch (error) {
-        showStatus(`邮箱刷新网络错误: ${error.message}`, 'error');
+        showStatus(`Email refresh network error: ${error.message}`, 'error');
     }
 }
 
 async function deduplicateByEmail() {
-    if (!confirm('确定要对凭证进行凭证一键去重吗？\n\n相同邮箱的凭证只保留一个，其他将被删除。\n此操作不可撤销！')) return;
+    if (!confirm('Are you sure you want to perform one-click credential deduplication?\n\nOnly one credential per email will be kept\nThis action cannot be undone!')) return;
 
     try {
-        showStatus('正在进行凭证一键去重...', 'info');
+        showStatus('One-click credential deduplication in progress...', 'info');
         const response = await fetch('./creds/deduplicate-by-email', {
             method: 'POST',
             headers: getAuthHeaders()
         });
         const data = await response.json();
         if (response.ok) {
-            const msg = `去重完成：删除 ${data.deleted_count} 个重复凭证，保留 ${data.kept_count} 个凭证（${data.unique_emails_count} 个唯一邮箱）`;
+            const msg = `Deduplication complete: Deleted ${data.deleted_count} duplicate credentials ${data.kept_count} credentials (${data.unique_emails_count} unique emails)`;
             showStatus(msg, 'success');
             await AppState.creds.refresh();
             
-            // 显示详细信息
+            // Show detailed information
             if (data.duplicate_groups && data.duplicate_groups.length > 0) {
-                let details = '去重详情：\n\n';
+                let details = 'Deduplication details:\n\n';
                 data.duplicate_groups.forEach(group => {
-                    details += `邮箱: ${group.email}\n保留: ${group.kept_file}\n删除: ${group.deleted_files.join(', ')}\n\n`;
+                    details += `Email: ${group.email}\nKeep: ${group.kept_file}\nDelete: ${group.deleted_files.join(', ')}\n\n`;
                 });
                 console.log(details);
             }
         } else {
-            showStatus(data.message || '去重失败', 'error');
+            showStatus(data.message || 'Deduplication failed', 'error');
         }
     } catch (error) {
-        showStatus(`去重网络错误: ${error.message}`, 'error');
+        showStatus(`Deduplication network error: ${error.message}`, 'error');
     }
 }
 
 async function deduplicateAntigravityByEmail() {
-    if (!confirm('确定要对Antigravity凭证进行凭证一键去重吗？\n\n相同邮箱的凭证只保留一个，其他将被删除。\n此操作不可撤销！')) return;
+    if (!confirm('Are you sure you want to performAntigravitycredentials for one-click deduplication?\n\nOnly one credential per email will be kept\nThis action cannot be undone!')) return;
 
     try {
-        showStatus('正在进行凭证一键去重...', 'info');
+        showStatus('One-click credential deduplication in progress...', 'info');
         const response = await fetch('./creds/deduplicate-by-email?mode=antigravity', {
             method: 'POST',
             headers: getAuthHeaders()
         });
         const data = await response.json();
         if (response.ok) {
-            const msg = `去重完成：删除 ${data.deleted_count} 个重复凭证，保留 ${data.kept_count} 个凭证（${data.unique_emails_count} 个唯一邮箱）`;
+            const msg = `Deduplication complete: Deleted ${data.deleted_count} duplicate credentials ${data.kept_count} credentials (${data.unique_emails_count} unique emails)`;
             showStatus(msg, 'success');
             await AppState.antigravityCreds.refresh();
             
-            // 显示详细信息
+            // Show detailed information
             if (data.duplicate_groups && data.duplicate_groups.length > 0) {
-                let details = '去重详情：\n\n';
+                let details = 'Deduplication details:\n\n';
                 data.duplicate_groups.forEach(group => {
-                    details += `邮箱: ${group.email}\n保留: ${group.kept_file}\n删除: ${group.deleted_files.join(', ')}\n\n`;
+                    details += `Email: ${group.email}\nKeep: ${group.kept_file}\nDelete: ${group.deleted_files.join(', ')}\n\n`;
                 });
                 console.log(details);
             }
         } else {
-            showStatus(data.message || '去重失败', 'error');
+            showStatus(data.message || 'Deduplication failed', 'error');
         }
     } catch (error) {
-        showStatus(`去重网络错误: ${error.message}`, 'error');
+        showStatus(`Deduplication network error: ${error.message}`, 'error');
     }
 }
 
 // =====================================================================
-// WebSocket日志相关
+// WebSocketLog related
 // =====================================================================
 function connectWebSocket() {
     if (AppState.logWebSocket && AppState.logWebSocket.readyState === WebSocket.OPEN) {
-        showStatus('WebSocket已经连接', 'info');
+        showStatus('WebSocketConnected', 'info');
         return;
     }
 
@@ -2464,18 +1923,18 @@ function connectWebSocket() {
         const wsPath = new URL('./logs/stream', window.location.href).href;
         const wsUrl = wsPath.replace(/^http/, 'ws');
 
-        // 添加 token 认证参数
+        // Add token Authentication parameters
         const wsUrlWithAuth = `${wsUrl}?token=${encodeURIComponent(AppState.authToken)}`;
 
-        document.getElementById('connectionStatusText').textContent = '连接中...';
+        document.getElementById('connectionStatusText').textContent = 'Connecting...';
         document.getElementById('logConnectionStatus').className = 'status info';
 
         AppState.logWebSocket = new WebSocket(wsUrlWithAuth);
 
         AppState.logWebSocket.onopen = () => {
-            document.getElementById('connectionStatusText').textContent = '已连接';
+            document.getElementById('connectionStatusText').textContent = 'Connected';
             document.getElementById('logConnectionStatus').className = 'status success';
-            showStatus('日志流连接成功', 'success');
+            showStatus('Log stream connected successfully', 'success');
             clearLogsDisplay();
         };
 
@@ -2495,19 +1954,19 @@ function connectWebSocket() {
         };
 
         AppState.logWebSocket.onclose = () => {
-            document.getElementById('connectionStatusText').textContent = '连接断开';
+            document.getElementById('connectionStatusText').textContent = 'Connection disconnected';
             document.getElementById('logConnectionStatus').className = 'status error';
-            showStatus('日志流连接断开', 'info');
+            showStatus('Log stream connection disconnected', 'info');
         };
 
         AppState.logWebSocket.onerror = (error) => {
-            document.getElementById('connectionStatusText').textContent = '连接错误';
+            document.getElementById('connectionStatusText').textContent = 'Connection error';
             document.getElementById('logConnectionStatus').className = 'status error';
-            showStatus('日志流连接错误: ' + error, 'error');
+            showStatus('Log stream connection error: ' + error, 'error');
         };
     } catch (error) {
-        showStatus('创建WebSocket连接失败: ' + error.message, 'error');
-        document.getElementById('connectionStatusText').textContent = '连接失败';
+        showStatus('CreateWebSocketConnection failed: ' + error.message, 'error');
+        document.getElementById('connectionStatusText').textContent = 'Connection failed';
         document.getElementById('logConnectionStatus').className = 'status error';
     }
 }
@@ -2516,16 +1975,16 @@ function disconnectWebSocket() {
     if (AppState.logWebSocket) {
         AppState.logWebSocket.close();
         AppState.logWebSocket = null;
-        document.getElementById('connectionStatusText').textContent = '未连接';
+        document.getElementById('connectionStatusText').textContent = 'Not connected';
         document.getElementById('logConnectionStatus').className = 'status info';
-        showStatus('日志流连接已断开', 'info');
+        showStatus('Log stream connection has been disconnected', 'info');
     }
 }
 
 function clearLogsDisplay() {
     AppState.allLogs = [];
     AppState.filteredLogs = [];
-    document.getElementById('logContent').textContent = '日志已清空，等待新日志...';
+    document.getElementById('logContent').textContent = 'Logs cleared...';
 }
 
 async function downloadLogs() {
@@ -2548,13 +2007,13 @@ async function downloadLogs() {
             a.click();
             window.URL.revokeObjectURL(url);
 
-            showStatus(`日志文件下载成功: ${filename}`, 'success');
+            showStatus(`Log file downloaded successfully: ${filename}`, 'success');
         } else {
             const data = await response.json();
-            showStatus(`下载日志失败: ${data.detail || data.error || '未知错误'}`, 'error');
+            showStatus(`Failed to download logs: ${data.detail || data.error || 'Unknown Error'}`, 'error');
         }
     } catch (error) {
-        showStatus(`下载日志时网络错误: ${error.message}`, 'error');
+        showStatus(`Network error while downloading logs: ${error.message}`, 'error');
     }
 }
 
@@ -2571,11 +2030,11 @@ async function clearLogs() {
             clearLogsDisplay();
             showStatus(data.message, 'success');
         } else {
-            showStatus(`清空日志失败: ${data.detail || data.error || '未知错误'}`, 'error');
+            showStatus(`Failed to clear logs: ${data.detail || data.error || 'Unknown Error'}`, 'error');
         }
     } catch (error) {
         clearLogsDisplay();
-        showStatus(`清空日志时网络错误: ${error.message}`, 'error');
+        showStatus(`Network error while clearing logs: ${error.message}`, 'error');
     }
 }
 
@@ -2596,14 +2055,14 @@ function displayLogs() {
     const logContent = document.getElementById('logContent');
     if (AppState.filteredLogs.length === 0) {
         logContent.textContent = AppState.currentLogFilter === 'all' ?
-            '暂无日志...' : `暂无${AppState.currentLogFilter}级别的日志...`;
+            'No logs available...' : `None${AppState.currentLogFilter}level logs...`;
     } else {
         logContent.textContent = AppState.filteredLogs.join('\n');
     }
 }
 
 // =====================================================================
-// 环境变量凭证管理
+// Environment variable credential management
 // =====================================================================
 async function checkEnvCredsStatus() {
     const loading = document.getElementById('envStatusLoading');
@@ -2620,26 +2079,26 @@ async function checkEnvCredsStatus() {
             const envVarsList = document.getElementById('envVarsList');
             envVarsList.textContent = Object.keys(data.available_env_vars).length > 0
                 ? Object.keys(data.available_env_vars).join(', ')
-                : '未找到GCLI_CREDS_*环境变量';
+                : 'Not foundGCLI_CREDS_*Environment Variables';
 
             const autoLoadStatus = document.getElementById('autoLoadStatus');
-            autoLoadStatus.textContent = data.auto_load_enabled ? '✅ 已启用' : '❌ 未启用';
+            autoLoadStatus.textContent = data.auto_load_enabled ? '✅ Enabled' : '❌ Not enabled';
             autoLoadStatus.style.color = data.auto_load_enabled ? '#28a745' : '#dc3545';
 
-            document.getElementById('envFilesCount').textContent = `${data.existing_env_files_count} 个文件`;
+            document.getElementById('envFilesCount').textContent = `${data.existing_env_files_count} files`;
 
             const envFilesList = document.getElementById('envFilesList');
             envFilesList.textContent = data.existing_env_files.length > 0
                 ? data.existing_env_files.join(', ')
-                : '无';
+                : 'None';
 
             content.classList.remove('hidden');
-            showStatus('环境变量状态检查完成', 'success');
+            showStatus('Environment variable status check complete', 'success');
         } else {
-            showStatus(`获取环境变量状态失败: ${data.detail || data.error || '未知错误'}`, 'error');
+            showStatus(`Failed to get environment variable status: ${data.detail || data.error || 'Unknown Error'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     } finally {
         loading.style.display = 'none';
     }
@@ -2647,7 +2106,7 @@ async function checkEnvCredsStatus() {
 
 async function loadEnvCredentials() {
     try {
-        showStatus('正在从环境变量导入凭证...', 'info');
+        showStatus('Importing credentials from environment variables...', 'info');
 
         const response = await fetch('./auth/load-env-creds', {
             method: 'POST',
@@ -2658,26 +2117,26 @@ async function loadEnvCredentials() {
 
         if (response.ok) {
             if (data.loaded_count > 0) {
-                showStatus(`✅ 成功导入 ${data.loaded_count}/${data.total_count} 个凭证文件`, 'success');
+                showStatus(`✅ Successfully imported ${data.loaded_count}/${data.total_count} credential files`, 'success');
                 setTimeout(() => checkEnvCredsStatus(), 1000);
             } else {
                 showStatus(`⚠️ ${data.message}`, 'info');
             }
         } else {
-            showStatus(`导入失败: ${data.detail || data.error || '未知错误'}`, 'error');
+            showStatus(`Import failed: ${data.detail || data.error || 'Unknown Error'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     }
 }
 
 async function clearEnvCredentials() {
-    if (!confirm('确定要清除所有从环境变量导入的凭证文件吗？\n这将删除所有文件名以 "env-" 开头的认证文件。')) {
+    if (!confirm('Are you sure you want to clear all credential files imported from environment variables?\nThis will delete all authentication files starting with "env-" prefix.')) {
         return;
     }
 
     try {
-        showStatus('正在清除环境变量凭证文件...', 'info');
+        showStatus('Clearing environment variable credential files...', 'info');
 
         const response = await fetch('./auth/env-creds', {
             method: 'DELETE',
@@ -2687,18 +2146,18 @@ async function clearEnvCredentials() {
         const data = await response.json();
 
         if (response.ok) {
-            showStatus(`✅ 成功删除 ${data.deleted_count} 个环境变量凭证文件`, 'success');
+            showStatus(`✅ Successfully deleted ${data.deleted_count} environment variable credential files`, 'success');
             setTimeout(() => checkEnvCredsStatus(), 1000);
         } else {
-            showStatus(`清除失败: ${data.detail || data.error || '未知错误'}`, 'error');
+            showStatus(`Clear failed: ${data.detail || data.error || 'Unknown Error'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     }
 }
 
 // =====================================================================
-// 配置管理
+// Configuration Management
 // =====================================================================
 async function loadConfig() {
     const loading = document.getElementById('configLoading');
@@ -2717,12 +2176,12 @@ async function loadConfig() {
 
             populateConfigForm();
             form.classList.remove('hidden');
-            showStatus('配置加载成功', 'success');
+            showStatus('Configuration loaded successfully', 'success');
         } else {
-            showStatus(`加载配置失败: ${data.detail || data.error || '未知错误'}`, 'error');
+            showStatus(`Failed to load configuration: ${data.detail || data.error || 'Unknown Error'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     } finally {
         loading.style.display = 'none';
     }
@@ -2756,12 +2215,8 @@ function populateConfigForm() {
     document.getElementById('compatibilityModeEnabled').checked = Boolean(c.compatibility_mode_enabled);
     document.getElementById('returnThoughtsToFrontend').checked = Boolean(c.return_thoughts_to_frontend !== false);
     document.getElementById('antigravityStream2nostream').checked = Boolean(c.antigravity_stream2nostream !== false);
-    document.getElementById('antigravitySwitchCredentialEnabled').checked = Boolean(c.antigravity_switch_credential_enabled);
 
     setConfigField('antiTruncationMaxAttempts', c.anti_truncation_max_attempts || 3);
-
-    setConfigField('keepaliveUrl', c.keepalive_url || '');
-    setConfigField('keepaliveInterval', c.keepalive_interval || 60);
 }
 
 function setConfigField(fieldId, value) {
@@ -2810,10 +2265,7 @@ async function saveConfig() {
             compatibility_mode_enabled: getChecked('compatibilityModeEnabled'),
             return_thoughts_to_frontend: getChecked('returnThoughtsToFrontend'),
             antigravity_stream2nostream: getChecked('antigravityStream2nostream'),
-            antigravity_switch_credential_enabled: getChecked('antigravitySwitchCredentialEnabled'),
-            anti_truncation_max_attempts: getInt('antiTruncationMaxAttempts', 3),
-            keepalive_url: getValue('keepaliveUrl'),
-            keepalive_interval: getInt('keepaliveInterval', 60)
+            anti_truncation_max_attempts: getInt('antiTruncationMaxAttempts', 3)
         };
 
         const response = await fetch('./config/save', {
@@ -2825,14 +2277,14 @@ async function saveConfig() {
         const data = await response.json();
 
         if (response.ok) {
-            let message = '配置保存成功';
+            let message = 'Configuration saved successfully';
 
             if (data.hot_updated && data.hot_updated.length > 0) {
-                message += `，以下配置已立即生效: ${data.hot_updated.join(', ')}`;
+                message += `: ${data.hot_updated.join(', ')}`;
             }
 
             if (data.restart_required && data.restart_required.length > 0) {
-                message += `\n⚠️ 重启提醒: ${data.restart_notice}`;
+                message += `\n⚠️ Restart reminder: ${data.restart_notice}`;
                 showStatus(message, 'info');
             } else {
                 showStatus(message, 'success');
@@ -2840,14 +2292,14 @@ async function saveConfig() {
 
             setTimeout(() => loadConfig(), 1000);
         } else {
-            showStatus(`保存配置失败: ${data.detail || data.error || '未知错误'}`, 'error');
+            showStatus(`Failed to save configuration: ${data.detail || data.error || 'Unknown Error'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     }
 }
 
-// 镜像网址配置
+// Mirror URL configuration
 const mirrorUrls = {
     codeAssistEndpoint: 'https://gcli-api.sukaka.top/cloudcode-pa',
     oauthProxyUrl: 'https://gcli-api.sukaka.top/oauth2',
@@ -2863,31 +2315,31 @@ const officialUrls = {
     googleapisProxyUrl: 'https://www.googleapis.com',
     resourceManagerApiUrl: 'https://cloudresourcemanager.googleapis.com',
     serviceUsageApiUrl: 'https://serviceusage.googleapis.com',
-    antigravityApiUrl: 'https://daily-cloudcode-pa.googleapis.com'
+    antigravityApiUrl: 'https://daily-cloudcode-pa.sandbox.googleapis.com'
 };
 
 function useMirrorUrls() {
-    if (confirm('确定要将所有端点配置为镜像网址吗？')) {
+    if (confirm('Are you sure you want to configure all endpoints as mirror URLs?')) {
         for (const [fieldId, url] of Object.entries(mirrorUrls)) {
             const field = document.getElementById(fieldId);
             if (field && !field.disabled) field.value = url;
         }
-        showStatus('✅ 已切换到镜像网址配置，记得点击"保存配置"按钮保存设置', 'success');
+        showStatus('✅ Switched to mirror URL configuration"Save configuration"button to save settings', 'success');
     }
 }
 
 function restoreOfficialUrls() {
-    if (confirm('确定要将所有端点配置为官方地址吗？')) {
+    if (confirm('Are you sure you want to configure all endpoints as official addresses?')) {
         for (const [fieldId, url] of Object.entries(officialUrls)) {
             const field = document.getElementById(fieldId);
             if (field && !field.disabled) field.value = url;
         }
-        showStatus('✅ 已切换到官方端点配置，记得点击"保存配置"按钮保存设置', 'success');
+        showStatus('✅ Switched to official endpoint configuration"Save configuration"button to save settings', 'success');
     }
 }
 
 // =====================================================================
-// 使用统计
+// Usage Statistics
 // =====================================================================
 async function refreshUsageStats() {
     const loading = document.getElementById('usageLoading');
@@ -2903,7 +2355,7 @@ async function refreshUsageStats() {
         ]);
 
         if (statsResponse.status === 401 || aggregatedResponse.status === 401) {
-            showStatus('认证失败，请重新登录', 'error');
+            showStatus('Authentication failed', 'error');
             setTimeout(() => location.reload(), 1500);
             return;
         }
@@ -2921,13 +2373,13 @@ async function refreshUsageStats() {
 
             renderUsageList();
 
-            showStatus(`已加载 ${aggData.total_files || Object.keys(AppState.usageStatsData).length} 个文件的使用统计`, 'success');
+            showStatus(`Loaded ${aggData.total_files || Object.keys(AppState.usageStatsData).length} usage statistics for files`, 'success');
         } else {
-            const errorMsg = statsData.detail || aggregatedData.detail || '加载使用统计失败';
-            showStatus(`错误: ${errorMsg}`, 'error');
+            const errorMsg = statsData.detail || aggregatedData.detail || 'Failed to load usage statistics';
+            showStatus(`Error: ${errorMsg}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     } finally {
         loading.style.display = 'none';
     }
@@ -2938,7 +2390,7 @@ function renderUsageList() {
     list.innerHTML = '';
 
     if (Object.keys(AppState.usageStatsData).length === 0) {
-        list.innerHTML = '<p style="text-align: center; color: #666;">暂无使用统计数据</p>';
+        list.innerHTML = '<p style="text-align: center; color: #666;">No usage statistics data available</p>';
         return;
     }
 
@@ -2954,12 +2406,12 @@ function renderUsageList() {
             </div>
             <div class="usage-info">
                 <div class="usage-info-item" style="grid-column: 1 / -1;">
-                    <span class="usage-info-label">24小时内调用次数</span>
+                    <span class="usage-info-label">24calls within hours</span>
                     <span class="usage-info-value" style="font-size: 24px; font-weight: bold; color: #007bff;">${calls24h}</span>
                 </div>
             </div>
             <div class="usage-actions">
-                <button class="usage-btn reset" onclick="resetSingleUsageStats('${filename}')">重置统计</button>
+                <button class="usage-btn reset" onclick="resetSingleUsageStats('${filename}')">Reset statistics</button>
             </div>
         `;
 
@@ -2968,7 +2420,7 @@ function renderUsageList() {
 }
 
 async function resetSingleUsageStats(filename) {
-    if (!confirm(`确定要重置 ${filename} 的使用统计吗？`)) return;
+    if (!confirm(`Are you sure you want to reset ${filename} usage statistics?`)) return;
 
     try {
         const response = await fetch('./usage/reset', {
@@ -2983,15 +2435,15 @@ async function resetSingleUsageStats(filename) {
             showStatus(data.message, 'success');
             await refreshUsageStats();
         } else {
-            showStatus(`重置失败: ${data.message || data.detail || data.error || '未知错误'}`, 'error');
+            showStatus(`Reset failed: ${data.message || data.detail || data.error || 'Unknown Error'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     }
 }
 
 async function resetAllUsageStats() {
-    if (!confirm('确定要重置所有文件的使用统计吗？此操作不可恢复！')) return;
+    if (!confirm('Are you sure you want to reset usage statistics for all files? This action cannot be undone!')) return;
 
     try {
         const response = await fetch('./usage/reset', {
@@ -3006,15 +2458,15 @@ async function resetAllUsageStats() {
             showStatus(data.message, 'success');
             await refreshUsageStats();
         } else {
-            showStatus(`重置失败: ${data.message || data.detail || data.error || '未知错误'}`, 'error');
+            showStatus(`Reset failed: ${data.message || data.detail || data.error || 'Unknown Error'}`, 'error');
         }
     } catch (error) {
-        showStatus(`网络错误: ${error.message}`, 'error');
+        showStatus(`Network Error: ${error.message}`, 'error');
     }
 }
 
 // =====================================================================
-// 冷却倒计时自动更新
+// Cooldown countdown auto-update
 // =====================================================================
 function startCooldownTimer() {
     if (AppState.cooldownTimerInterval) {
@@ -3036,7 +2488,7 @@ function stopCooldownTimer() {
 function updateCooldownDisplays() {
     let needsRefresh = false;
 
-    // 检查模型级冷却是否过期
+    // Check if model-level cooldown has expired
     for (const credInfo of Object.values(AppState.creds.data)) {
         if (credInfo.model_cooldowns && Object.keys(credInfo.model_cooldowns).length > 0) {
             const currentTime = Date.now() / 1000;
@@ -3054,7 +2506,7 @@ function updateCooldownDisplays() {
         return;
     }
 
-    // 更新模型级冷却的显示
+    // Update model-level cooldown display
     document.querySelectorAll('.cooldown-badge').forEach(badge => {
         const card = badge.closest('.cred-card');
         const filenameEl = card?.querySelector('.cred-filename');
@@ -3065,7 +2517,7 @@ function updateCooldownDisplays() {
 
         if (credInfo && credInfo.model_cooldowns) {
             const currentTime = Date.now() / 1000;
-            const titleMatch = badge.getAttribute('title')?.match(/模型: (.+)/);
+            const titleMatch = badge.getAttribute('title')?.match(/Model: (.+)/);
             if (titleMatch) {
                 const model = titleMatch[1];
                 const cooldownUntil = credInfo.model_cooldowns[model];
@@ -3075,7 +2527,7 @@ function updateCooldownDisplays() {
                         const shortModel = model.replace('gemini-', '').replace('-exp', '')
                             .replace('2.0-', '2-').replace('1.5-', '1.5-');
                         const timeDisplay = formatCooldownTime(remaining).replace(/s$/, '').replace(/ /g, '');
-                        badge.innerHTML = `⏰ ${shortModel}: ${timeDisplay}`;
+                        badge.innerHTML = `🔧 ${shortModel}: ${timeDisplay}`;
                     }
                 }
             }
@@ -3084,10 +2536,10 @@ function updateCooldownDisplays() {
 }
 
 // =====================================================================
-// 版本信息管理
+// Version information management
 // =====================================================================
 
-// 获取并显示版本信息（不检查更新）
+// Get and display version info (without checking for updates)
 async function fetchAndDisplayVersion() {
     try {
         const response = await fetch('./version/info');
@@ -3096,24 +2548,24 @@ async function fetchAndDisplayVersion() {
         const versionText = document.getElementById('versionText');
 
         if (data.success) {
-            // 只显示版本号
+            // Show version number only
             versionText.textContent = `v${data.version}`;
-            versionText.title = `完整版本: ${data.full_hash}\n提交信息: ${data.message}\n提交时间: ${data.date}`;
+            versionText.title = `Full version: ${data.full_hash}\nCommit message: ${data.message}\nCommit time: ${data.date}`;
             versionText.style.cursor = 'help';
         } else {
-            versionText.textContent = '未知版本';
-            versionText.title = data.error || '无法获取版本信息';
+            versionText.textContent = 'Unknown version';
+            versionText.title = data.error || 'Unable to get version information';
         }
     } catch (error) {
-        console.error('获取版本信息失败:', error);
+        console.error('Failed to get version information:', error);
         const versionText = document.getElementById('versionText');
         if (versionText) {
-            versionText.textContent = '版本信息获取失败';
+            versionText.textContent = 'Version information retrieval failed';
         }
     }
 }
 
-// 检查更新
+// Check for updates
 async function checkForUpdates() {
     const checkBtn = document.getElementById('checkUpdateBtn');
     if (!checkBtn) return;
@@ -3121,70 +2573,70 @@ async function checkForUpdates() {
     const originalText = checkBtn.textContent;
 
     try {
-        // 显示检查中状态
-        checkBtn.textContent = '检查中...';
+        // Show checking status
+        checkBtn.textContent = 'Checking...';
         checkBtn.disabled = true;
 
-        // 调用API检查更新
+        // CallAPICheck for updates
         const response = await fetch('./version/info?check_update=true');
         const data = await response.json();
 
         if (data.success) {
             if (data.check_update === false) {
-                // 检查更新失败
-                showStatus(`检查更新失败: ${data.update_error || '未知错误'}`, 'error');
+                // Failed to check for updates
+                showStatus(`Failed to check for updates: ${data.update_error || 'Unknown Error'}`, 'error');
             } else if (data.has_update === true) {
-                // 有更新
-                const updateMsg = `发现新版本！\n当前: v${data.version}\n最新: v${data.latest_version}\n\n更新内容: ${data.latest_message || '无'}`;
+                // Update available
+                const updateMsg = `New version found!\nCurrent: v${data.version}\nLatest: v${data.latest_version}\n\nUpdate content: ${data.latest_message || 'None'}`;
                 showStatus(updateMsg.replace(/\n/g, ' '), 'warning');
 
-                // 更新按钮样式
+                // Update button style
                 checkBtn.style.backgroundColor = '#ffc107';
-                checkBtn.textContent = '有新版本';
+                checkBtn.textContent = 'New version available';
 
                 setTimeout(() => {
                     checkBtn.style.backgroundColor = '#17a2b8';
                     checkBtn.textContent = originalText;
                 }, 5000);
             } else if (data.has_update === false) {
-                // 已是最新
-                showStatus('已是最新版本！', 'success');
+                // Already latest
+                showStatus('Already the latest version!', 'success');
 
                 checkBtn.style.backgroundColor = '#28a745';
-                checkBtn.textContent = '已是最新';
+                checkBtn.textContent = 'Already latest';
 
                 setTimeout(() => {
                     checkBtn.style.backgroundColor = '#17a2b8';
                     checkBtn.textContent = originalText;
                 }, 3000);
             } else {
-                // 无法确定
-                showStatus('无法确定是否有更新', 'info');
+                // Unable to determine
+                showStatus('Unable to determine if there is an update', 'info');
             }
         } else {
-            showStatus(`检查更新失败: ${data.error}`, 'error');
+            showStatus(`Failed to check for updates: ${data.error}`, 'error');
         }
     } catch (error) {
-        console.error('检查更新失败:', error);
-        showStatus(`检查更新失败: ${error.message}`, 'error');
+        console.error('Failed to check for updates:', error);
+        showStatus(`Failed to check for updates: ${error.message}`, 'error');
     } finally {
         checkBtn.disabled = false;
-        if (checkBtn.textContent === '检查中...') {
+        if (checkBtn.textContent === 'Checking...') {
             checkBtn.textContent = originalText;
         }
     }
 }
 
 // =====================================================================
-// 页面初始化
+// Page initialization
 // =====================================================================
 window.onload = async function () {
     const autoLoginSuccess = await autoLogin();
 
     if (!autoLoginSuccess) {
-        showStatus('请输入密码登录', 'info');
+        showStatus('Please enter password to log in', 'info');
     } else {
-        // 登录成功后获取版本信息
+        // Get version info after successful login
         await fetchAndDisplayVersion();
     }
 
@@ -3196,7 +2648,7 @@ window.onload = async function () {
     }
 };
 
-// 拖拽功能 - 初始化
+// Drag and drop functionality - Initialization
 document.addEventListener('DOMContentLoaded', function () {
     const uploadArea = document.getElementById('uploadArea');
 
@@ -3218,8 +2670,3 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
-
-function autoSetKeepaliveUrl() {
-    const url = `${window.location.protocol}//${window.location.host}`;
-    document.getElementById('keepaliveUrl').value = url;
-}
