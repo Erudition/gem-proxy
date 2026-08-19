@@ -31,7 +31,7 @@ from src.utils import (
     is_fake_streaming_model
 )
 
-# 本地模块 - 转换器（假流式需要）
+# 本地模块 - 转换器（fake-stream需要）
 from src.converter.fake_stream import (
     parse_response_for_fake_stream,
     build_gemini_fake_stream_chunks,
@@ -62,6 +62,7 @@ router = APIRouter()
 
 @router.post("/antigravity/v1beta/models/{model:path}:generateContent")
 @router.post("/antigravity/v1/models/{model:path}:generateContent")
+@router.post("/antigravity/models/{model:path}:generateContent")
 async def generate_content(
     gemini_request: "GeminiRequest",
     model: str = Path(..., description="Model name"),
@@ -128,6 +129,7 @@ async def generate_content(
 
 @router.post("/antigravity/v1beta/models/{model:path}:streamGenerateContent")
 @router.post("/antigravity/v1/models/{model:path}:streamGenerateContent")
+@router.post("/antigravity/models/{model:path}:streamGenerateContent")
 async def stream_generate_content(
     gemini_request: GeminiRequest,
     model: str = Path(..., description="Model name"),
@@ -154,7 +156,7 @@ async def stream_generate_content(
     # 更新模型名为真实模型名
     normalized_dict["model"] = real_model
 
-    # ========== 假流式生成器 ==========
+    # ========== fake-stream生成器 ==========
     async def fake_stream_generator():
         from src.converter.antigravity_fix import normalize_antigravity_request
         from src.api.antigravity import non_stream_request
@@ -215,7 +217,7 @@ async def stream_generate_content(
 
         yield "data: [DONE]\n\n".encode()
 
-    # ========== 流式抗截断生成器 ==========
+    # ========== anti-truncate生成器 ==========
     async def anti_truncation_generator():
         from src.converter.antigravity_fix import normalize_antigravity_request
         from src.converter.anti_truncation import AntiTruncationStreamProcessor
@@ -382,13 +384,14 @@ async def stream_generate_content(
     if use_fake_streaming:
         return await build_streaming_response_or_error(fake_stream_generator())
     elif use_anti_truncation:
-        log.info("启用流式抗截断功能")
+        log.info("启用anti-truncate功能")
         return await build_streaming_response_or_error(anti_truncation_generator())
     else:
         return await build_streaming_response_or_error(normal_stream_generator())
 
 @router.post("/antigravity/v1beta/models/{model:path}:countTokens")
 @router.post("/antigravity/v1/models/{model:path}:countTokens")
+@router.post("/antigravity/models/{model:path}:countTokens")
 async def count_tokens(
     request: Request = None,
     api_key: str = Depends(authenticate_gemini_flexible),
@@ -554,18 +557,18 @@ if __name__ == "__main__":
             print(f"\n总共收到 {chunk_count} 个chunk")
 
     def test_fake_stream_request():
-        """测试假流式请求"""
+        """测试fake-stream请求"""
         print("\n" + "=" * 80)
-        print("【测试4】假流式请求 (POST /antigravity/v1/models/假流式/gemini-2.5-flash:streamGenerateContent)")
+        print("【测试4】fake-stream请求 (POST /antigravity/v1/models/fake-stream/gemini-2.5-flash:streamGenerateContent)")
         print("=" * 80)
         print(f"请求体: {json.dumps(test_request_body, indent=2, ensure_ascii=False)}\n")
 
-        print("假流式响应数据 (每个chunk):")
+        print("fake-stream响应数据 (每个chunk):")
         print("-" * 80)
 
         with client.stream(
             "POST",
-            "/antigravity/v1/models/假流式/gemini-2.5-flash:streamGenerateContent",
+            "/antigravity/v1/models/fake-stream/gemini-2.5-flash:streamGenerateContent",
             json=test_request_body,
             params={"key": test_api_key}
         ) as response:
@@ -608,18 +611,18 @@ if __name__ == "__main__":
             print(f"\n总共收到 {chunk_count} 个HTTP chunk")
 
     def test_anti_truncation_stream_request():
-        """测试流式抗截断请求"""
+        """测试anti-truncate请求"""
         print("\n" + "=" * 80)
-        print("【测试5】流式抗截断请求 (POST /antigravity/v1/models/流式抗截断/gemini-2.5-flash:streamGenerateContent)")
+        print("【测试5】anti-truncate请求 (POST /antigravity/v1/models/anti-truncate/gemini-2.5-flash:streamGenerateContent)")
         print("=" * 80)
         print(f"请求体: {json.dumps(test_request_body, indent=2, ensure_ascii=False)}\n")
 
-        print("流式抗截断响应数据 (每个chunk):")
+        print("anti-truncate响应数据 (每个chunk):")
         print("-" * 80)
 
         with client.stream(
             "POST",
-            "/antigravity/v1/models/流式抗截断/gemini-2.5-flash:streamGenerateContent",
+            "/antigravity/v1/models/anti-truncate/gemini-2.5-flash:streamGenerateContent",
             json=test_request_body,
             params={"key": test_api_key}
         ) as response:
@@ -669,10 +672,10 @@ if __name__ == "__main__":
         # 测试流式请求
         test_stream_request()
 
-        # 测试假流式请求
+        # 测试fake-stream请求
         test_fake_stream_request()
 
-        # 测试流式抗截断请求
+        # 测试anti-truncate请求
         test_anti_truncation_stream_request()
 
         print("\n" + "=" * 80)

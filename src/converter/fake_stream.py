@@ -24,7 +24,7 @@ def safe_get_nested(obj: Any, *keys: str, default: Any = None) -> Any:
     return obj
 
 def parse_response_for_fake_stream(response_data: Dict[str, Any]) -> tuple:
-    """从完整响应中提取内容和推理内容(用于假流式)
+    """从完整响应中提取内容和推理内容(用于fake-stream)
 
     Args:
         response_data: Gemini API 响应数据
@@ -55,7 +55,7 @@ def parse_response_for_fake_stream(response_data: Dict[str, Any]) -> tuple:
 
 def extract_fake_stream_content(response: Any) -> Tuple[str, str, Dict[str, int]]:
     """
-    从 Gemini 非流式响应中提取内容，用于假流式处理
+    从 Gemini 非流式响应中提取内容，用于fake-stream处理
     
     Args:
         response: Gemini API 响应对象
@@ -144,7 +144,7 @@ def _build_candidate(parts: List[Dict[str, Any]], finish_reason: str = "STOP") -
 
 def create_openai_heartbeat_chunk() -> Dict[str, Any]:
     """
-    创建 OpenAI 格式的心跳块（用于假流式）
+    创建 OpenAI 格式的心跳块（用于fake-stream）
     
     Returns:
         心跳响应块字典
@@ -160,7 +160,7 @@ def create_openai_heartbeat_chunk() -> Dict[str, Any]:
     }
 
 def build_gemini_fake_stream_chunks(content: str, reasoning_content: str, finish_reason: str, images: List[Dict[str, Any]] = None, chunk_size: int = 50) -> List[Dict[str, Any]]:
-    """构建假流式响应的数据块
+    """构建fake-stream响应的数据块
 
     Args:
         content: 主要内容
@@ -240,7 +240,7 @@ def create_gemini_heartbeat_chunk() -> Dict[str, Any]:
 
 
 def build_openai_fake_stream_chunks(content: str, reasoning_content: str, finish_reason: str, model: str, images: List[Dict[str, Any]] = None, chunk_size: int = 50) -> List[Dict[str, Any]]:
-    """构建 OpenAI 格式的假流式响应数据块
+    """构建 OpenAI 格式的fake-stream响应数据块
 
     Args:
         content: 主要内容
@@ -343,7 +343,7 @@ def build_openai_fake_stream_chunks(content: str, reasoning_content: str, finish
 
 def create_anthropic_heartbeat_chunk() -> Dict[str, Any]:
     """
-    创建 Anthropic 格式的心跳块（用于假流式）
+    创建 Anthropic 格式的心跳块（用于fake-stream）
 
     Returns:
         心跳响应块字典
@@ -354,7 +354,7 @@ def create_anthropic_heartbeat_chunk() -> Dict[str, Any]:
 
 
 def build_anthropic_fake_stream_chunks(content: str, reasoning_content: str, finish_reason: str, model: str, images: List[Dict[str, Any]] = None, chunk_size: int = 50) -> List[Dict[str, Any]]:
-    """构建 Anthropic 格式的假流式响应数据块
+    """构建 Anthropic 格式的fake-stream响应数据块
 
     Args:
         content: 主要内容
