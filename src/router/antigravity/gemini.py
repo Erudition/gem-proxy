@@ -62,6 +62,7 @@ router = APIRouter()
 
 @router.post("/antigravity/v1beta/models/{model:path}:generateContent")
 @router.post("/antigravity/v1/models/{model:path}:generateContent")
+@router.post("/antigravity/models/{model:path}:generateContent")
 async def generate_content(
     gemini_request: "GeminiRequest",
     model: str = Path(..., description="Model name"),
@@ -128,6 +129,7 @@ async def generate_content(
 
 @router.post("/antigravity/v1beta/models/{model:path}:streamGenerateContent")
 @router.post("/antigravity/v1/models/{model:path}:streamGenerateContent")
+@router.post("/antigravity/models/{model:path}:streamGenerateContent")
 async def stream_generate_content(
     gemini_request: GeminiRequest,
     model: str = Path(..., description="Model name"),
@@ -389,6 +391,7 @@ async def stream_generate_content(
 
 @router.post("/antigravity/v1beta/models/{model:path}:countTokens")
 @router.post("/antigravity/v1/models/{model:path}:countTokens")
+@router.post("/antigravity/models/{model:path}:countTokens")
 async def count_tokens(
     request: Request = None,
     api_key: str = Depends(authenticate_gemini_flexible),

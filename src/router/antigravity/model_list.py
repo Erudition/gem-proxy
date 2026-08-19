@@ -73,6 +73,7 @@ async def get_antigravity_models_with_features():
 # ==================== API 路由 ====================
 
 @router.get("/antigravity/v1beta/models")
+@router.get("/antigravity/models")
 async def list_gemini_models(token: str = Depends(authenticate_flexible)):
     """
     返回 Gemini 格式的模型列表
@@ -89,6 +90,7 @@ async def list_gemini_models(token: str = Depends(authenticate_flexible)):
 
 
 @router.get("/antigravity/v1/models")
+@router.get("/antigravity/v1/models/openai")
 async def list_openai_models(token: str = Depends(authenticate_flexible)):
     """
     返回 OpenAI 格式的模型列表
