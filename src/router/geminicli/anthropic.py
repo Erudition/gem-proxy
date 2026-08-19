@@ -31,7 +31,7 @@ from src.utils import (
     authenticate_bearer,
 )
 
-# 本地模块 - 转换器（假流式需要）
+# 本地模块 - 转换器（fake-stream需要）
 from src.converter.fake_stream import (
     parse_response_for_fake_stream,
     build_anthropic_fake_stream_chunks,
@@ -152,7 +152,7 @@ async def messages(
 
     # ========== 流式请求 ==========
 
-    # ========== 假流式生成器 ==========
+    # ========== fake-stream生成器 ==========
     async def fake_stream_generator():
         from src.api.geminicli import non_stream_request
 
@@ -218,7 +218,7 @@ async def messages(
 
         yield "data: [DONE]\n\n".encode()
 
-    # ========== 流式抗截断生成器 ==========
+    # ========== anti-truncate生成器 ==========
     async def anti_truncation_generator():
         from src.converter.anti_truncation import AntiTruncationStreamProcessor
         from src.api.geminicli import stream_request
@@ -335,7 +335,7 @@ async def messages(
     if use_fake_streaming:
         return await build_streaming_response_or_error(fake_stream_generator())
     elif use_anti_truncation:
-        log.info("启用流式抗截断功能")
+        log.info("启用anti-truncate功能")
         return await build_streaming_response_or_error(anti_truncation_generator())
     else:
         return await build_streaming_response_or_error(normal_stream_generator())
@@ -537,18 +537,18 @@ if __name__ == "__main__":
             print(f"\n总共收到 {chunk_count} 个chunk")
 
     def test_fake_stream_request():
-        """测试假流式请求"""
+        """测试fake-stream请求"""
         print("\n" + "=" * 80)
-        print("【测试3】假流式请求 (POST /v1/messages with 假流式 prefix)")
+        print("【测试3】fake-stream请求 (POST /v1/messages with fake-stream prefix)")
         print("=" * 80)
 
         fake_stream_request_body = test_request_body.copy()
-        fake_stream_request_body["model"] = "假流式/gemini-2.5-flash"
+        fake_stream_request_body["model"] = "fake-stream/gemini-2.5-flash"
         fake_stream_request_body["stream"] = True
 
         print(f"请求体: {json.dumps(fake_stream_request_body, indent=2, ensure_ascii=False)}\n")
 
-        print("假流式响应数据 (每个chunk):")
+        print("fake-stream响应数据 (每个chunk):")
         print("-" * 80)
 
         with client.stream(
@@ -601,7 +601,7 @@ if __name__ == "__main__":
         # 测试流式请求
         test_stream_request()
 
-        # 测试假流式请求
+        # 测试fake-stream请求
         test_fake_stream_request()
 
         print("\n" + "=" * 80)
