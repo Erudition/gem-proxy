@@ -20,6 +20,24 @@ from src.converter.utils import merge_system_messages
 
 from log import log
 
+
+def _stringify_enum_values(schema: Any) -> None:
+    """
+    Recursively cast all enum values to strings.
+
+    Gemini's Schema.enum only accepts string arrays.  OpenAI-compatible
+    tool definitions may carry numeric enums (e.g. ``"enum": [0, 1, 2]``)
+    which cause Gemini to reject the request with a 400 error.
+
+    Mutates *schema* in-place.
+    """
+    if not isinstance(schema, dict):
+        return
+    if "enum" in schema and isinstance(schema["enum"], list):
+        schema["enum"] = [str(v) for v in schema["enum"]]
+    for prop_schema in schema.get("properties", {}).values():
+        _stringify_enum_values(prop_schema)
+
 def _convert_usage_metadata(usage_metadata: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     将Gemini的usageMetadata转换为OpenAI格式的usage字段
@@ -515,7 +533,7 @@ def _clean_schema_for_gemini(schema: Any, root_schema: Optional[Dict[str, Any]] 
             ]
             if enum_values:
                 result["type"] = "STRING"
-                result["enum"] = enum_values
+                result["enum"] = [str(v) for v in enum_values]
         elif "type" not in result:
             # 如果不是 enum，尝试取第一个有效的类型定义
             first_valid = next((item for item in cleaned_any_of if item.get("type") or item.get("enum")), None)
@@ -552,6 +570,9 @@ def _clean_schema_for_gemini(schema: Any, root_schema: Optional[Dict[str, Any]] 
         for prop_name, prop_schema in result["properties"].items():
             cleaned_props[prop_name] = _clean_schema_for_gemini(prop_schema, root_schema, visited)
         result["properties"] = cleaned_props
+
+    # 8.5. Cast all enum values to strings (Gemini only accepts string enums)
+    _stringify_enum_values(result)
     
     # 9. 确保有 type 字段（如果有 properties 但没有 type）
     if "properties" in result and "type" not in result:
@@ -726,6 +747,9 @@ def _clean_schema_for_parameters_json_schema(
                     nullable_props.add(prop_name)
             cleaned_props[prop_name] = _clean_schema_for_parameters_json_schema(prop_schema, root_schema, visited)
         result["properties"] = cleaned_props
+
+    # Cast all enum values to strings (Gemini only accepts string enums)
+    _stringify_enum_values(result)
 
     if "properties" in result and "type" not in result:
         result["type"] = "object"
