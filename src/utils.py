@@ -10,7 +10,7 @@ security = HTTPBearer()
 
 # ====================== OAuth Configuration ======================
 
-_GEMINICLI_VERSION = "0.35.2"
+_GEMINICLI_VERSION = "0.55.1"
 _GEMINICLI_PLATFORM = "win32"
 _GEMINICLI_ARCH = "x64"
 _GEMINICLI_SURFACE = "cloud-shell"
@@ -25,7 +25,7 @@ def get_geminicli_user_agent(model: str = "") -> str:
 GEMINICLI_USER_AGENT = get_geminicli_user_agent()
 
 # Antigravity CLI 客户端仿真常量
-ANTIGRAVITY_CLI_VERSION = "1.1.12"
+ANTIGRAVITY_CLI_VERSION = "1.1.24"
 ANTIGRAVITY_CLI_PLATFORM = "windows/amd64"
 ANTIGRAVITY_USER_AGENT = f"antigravity/cli/{ANTIGRAVITY_CLI_VERSION} {ANTIGRAVITY_CLI_PLATFORM}"
 
@@ -81,7 +81,7 @@ def is_anti_truncation_model(model_name: str) -> bool:
 def get_base_model_from_feature_model(model_name: str) -> str:
     """Get base model name from feature model name."""
     # Remove feature prefixes
-    for prefix in ["fake-stream/", "anti-truncate/"]:
+    for prefix in ["fake-stream/", "anti-truncate/", "stream-anti-truncate/"]:
         if model_name.startswith(prefix):
             return model_name[len(prefix) :]
     return model_name

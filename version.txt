@@ -1,4 +1,4 @@
-full_hash=9b6a32516a54d0ada842225de2b479bf3aa6840e
-short_hash=9b6a325
-message=Revert "Update antigravity_fix.py"
-date=2026-08-19 15:30:13 +0800
+full_hash=1a506b1e0b3fa3b5d21512f57d7cdcd77700547d
+short_hash=1a506b1
+message=更新agycli版本
+date=2026-09-03 11:00:45 +0800

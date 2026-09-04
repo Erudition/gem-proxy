@@ -1902,9 +1902,23 @@
                                         style="color: #28a745;">✓ supports hot update</span></small>
                                 <div class="config-info"
                                     style="background-color: #f3e5f5; border: 1px solid #9c27b0; color: #4a148c;">
-                                    <strong>🔄 Description:</strong>ForAntigravitymode optimization option. When enabledAPIto fetch data and collect it fully before returning.
-                                    <br><strong>Applicable scenarios:</strong>In some casesAPIthan non-streamingAPIis more stable
+                                    <strong>🔄 Description:</strong>Antigravity mode optimization. When enabled, the backend uses the streaming API to fetch data and collects it fully before returning, even if the client requests a non-streaming response.
+                                    <br><strong>Applicable scenarios:</strong>In some cases the streaming API is more stable than the non-streaming API.
                                     <br><strong>Default:</strong>Enabled
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="antigravitySwitchCredentialEnabled"
+                                        class="config-checkbox" />
+                                    Antigravity Switch Credential
+                                </label>
+                                <small class="config-note">When enabled, switch credentials on retry; when disabled, keep the current credential until it enters cooldown for the current model or is disabled <span
+                                        style="color: #28a745;">✓ supports hot update</span></small>
+                                <div class="config-info"
+                                    style="background-color: #e8f5e9; border: 1px solid #66bb6a; color: #1b5e20;">
+                                    <strong>✅ Description:</strong>Disabled by default, for continuous use of the same credential; switching still occurs when a model enters cooldown or is auto-disabled.
                                 </div>
                             </div>
                         </div>
@@ -1923,9 +1937,9 @@
                                 <div class="config-info">
                                     <strong>Note:</strong>Anti-truncation feature is now controlled by model name:
                                     <ul style="margin: 5px 0; padding-left: 20px;">
-                                        <li>Select models with "-Streaming Anti-truncation" suffix models to enable</li>
-                                        <li>This feature only works during streaming</li>
-                                        <li>for example: "gemini-2.5-pro-Streaming Anti-truncation"</li>
+                                        <li>Select models with the "anti-truncate/" or "stream-anti-truncate/" prefix to enable</li>
+                                        <li>This feature works for both streaming and non-streaming requests</li>
+                                        <li>for example: "anti-truncate/gemini-2.5-pro"</li>
                                     </ul>
                                 </div>
                             </div>
