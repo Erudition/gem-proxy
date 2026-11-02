@@ -179,13 +179,19 @@ async def messages(
             # 检查是否是错误响应（有些错误可能status_code是200但包含error字段）
             if "error" in gemini_response:
                 log.error(f"Fake streaming got error in response body: {gemini_response['error']}")
-                # 转换错误为 Anthropic 格式
-                from src.converter.anthropic2gemini import gemini_to_anthropic_response
-                anthropic_error = gemini_to_anthropic_response(
-                    gemini_response,
-                    real_model,
-                    200
-                )
+                # 以 Anthropic 流式错误事件返回，而不是伪装成空内容的成功响应
+                error_detail = gemini_response["error"]
+                if isinstance(error_detail, dict):
+                    error_message = error_detail.get("message") or json.dumps(error_detail)
+                else:
+                    error_message = str(error_detail)
+                anthropic_error = {
+                    "type": "error",
+                    "error": {
+                        "type": "api_error",
+                        "message": error_message
+                    }
+                }
                 yield f"data: {json.dumps(anthropic_error)}\n\n".encode()
                 yield "data: [DONE]\n\n".encode()
                 return

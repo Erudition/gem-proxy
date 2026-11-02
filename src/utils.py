@@ -1,5 +1,7 @@
 from typing import List, Optional
 
+import httpx
+
 from config import get_api_password, get_panel_password
 from fastapi import Depends, HTTPException, Header, Query, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -10,7 +12,41 @@ security = HTTPBearer()
 
 # ====================== OAuth Configuration ======================
 
-_GEMINICLI_VERSION = "0.55.1"
+_LATEST_GEMINI_CLI_RELEASE_URL = (
+    "https://api.github.com/repos/google-gemini/gemini-cli/releases/latest"
+)
+_LATEST_ANTIGRAVITY_RELEASE_URL = (
+    "https://api.github.com/repos/google-antigravity/antigravity-cli/releases/latest"
+)
+
+
+def _get_latest_github_release_version(release_url: str, default: str) -> str:
+    """获取 GitHub 仓库最新 release 版本号；获取失败时返回默认版本。
+
+    Google 会向过旧 CLI 版本的客户端在 200 响应流中注入"请升级到最新版本"
+    提示文本（表现为模型输出无限刷屏）。启动时解析最新版本号可避免被版本门控。
+    """
+    try:
+        response = httpx.get(
+            release_url,
+            headers={"Accept": "application/vnd.github+json"},
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        release_data = response.json()
+    except (httpx.HTTPError, ValueError) as error:
+        log.warning(f"获取最新 CLI 版本失败 ({release_url})，使用默认版本 {default}: {error}")
+        return default
+
+    tag_name = release_data.get("tag_name") if isinstance(release_data, dict) else None
+    if not isinstance(tag_name, str) or not tag_name.strip():
+        log.warning(f"GitHub API 响应中没有有效的 tag_name ({release_url})，使用默认版本 {default}")
+        return default
+
+    return tag_name.strip().lstrip("vV")
+
+
+_GEMINICLI_VERSION = _get_latest_github_release_version(_LATEST_GEMINI_CLI_RELEASE_URL, "0.66.0")
 _GEMINICLI_PLATFORM = "win32"
 _GEMINICLI_ARCH = "x64"
 _GEMINICLI_SURFACE = "cloud-shell"
@@ -25,9 +61,10 @@ def get_geminicli_user_agent(model: str = "") -> str:
 GEMINICLI_USER_AGENT = get_geminicli_user_agent()
 
 # Antigravity CLI 客户端仿真常量
-ANTIGRAVITY_CLI_VERSION = "1.1.24"
+ANTIGRAVITY_CLI_VERSION = _get_latest_github_release_version(_LATEST_ANTIGRAVITY_RELEASE_URL, "1.4.12")
 ANTIGRAVITY_CLI_PLATFORM = "windows/amd64"
 ANTIGRAVITY_USER_AGENT = f"antigravity/cli/{ANTIGRAVITY_CLI_VERSION} {ANTIGRAVITY_CLI_PLATFORM}"
+log.info(f"当前 GeminiCLI 版本: {_GEMINICLI_VERSION}, Antigravity CLI 版本: {ANTIGRAVITY_CLI_VERSION}")
 
 # OAuth Configuration - 标准模式
 CLIENT_ID = "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com"
@@ -85,6 +122,35 @@ def get_base_model_from_feature_model(model_name: str) -> str:
         if model_name.startswith(prefix):
             return model_name[len(prefix) :]
     return model_name
+
+
+def get_model_context_window(model_name: str) -> int:
+    """Get the context window size for a given model."""
+    base_model = get_base_model_from_feature_model(model_name)
+    
+    # Recursively clean up all thinking/search suffixes
+    clean_model = base_model
+    while True:
+        changed = False
+        for suffix in ["-max", "-high", "-medium", "-low", "-minimal", "-search"]:
+            if clean_model.endswith(suffix):
+                clean_model = clean_model[:-len(suffix)]
+                changed = True
+        if not changed:
+            break
+            
+    mapping = {
+        "gemini-2.5-pro": 2000000,
+        "gemini-2.5-flash": 1000000,
+        "gemini-3-flash-preview": 1000000,
+        "gemini-3.1-pro-preview": 2000000,
+        "gemini-3.1-pro-preview-low": 2000000,
+        "gemini-3.1-flash-lite-preview": 1000000,
+        "gemini-pro-agent": 2000000,
+        "claude-opus-4-6": 1000000,
+        "claude-sonnet-4-6": 1000000
+    }
+    return mapping.get(clean_model, 1000000)  # Default to 1M
 
 
 def get_available_models(router_type: str = "openai") -> List[str]:

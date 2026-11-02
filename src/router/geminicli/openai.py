@@ -176,14 +176,11 @@ async def chat_completions(
             # 检查是否是错误响应（有些错误可能status_code是200但包含error字段）
             if "error" in gemini_response:
                 log.error(f"Fake streaming got error in response body: {gemini_response['error']}")
-                # 转换错误为 OpenAI 格式
-                from src.converter.openai2gemini import convert_gemini_to_openai_response
-                openai_error = convert_gemini_to_openai_response(
-                    gemini_response,
-                    real_model,
-                    200
-                )
-                yield f"data: {json.dumps(openai_error)}\n\n".encode()
+                # 以 OpenAI 流式错误帧返回，而不是伪装成空内容的成功响应
+                error_chunk = {
+                    "error": gemini_response["error"]
+                }
+                yield f"data: {json.dumps(error_chunk)}\n\n".encode()
                 yield "data: [DONE]\n\n".encode()
                 return
 
