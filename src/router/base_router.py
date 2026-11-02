@@ -5,6 +5,7 @@ Base Router - 共用的路由基础功能
 
 from typing import List
 
+from src.utils import get_model_context_window
 from src.models import Model, ModelList
 
 def create_openai_model_list(
@@ -29,7 +30,8 @@ def create_openai_model_list(
             id=model_id,
             object='model',
             created=current_timestamp,
-            owned_by=owned_by
+            owned_by=owned_by,
+            context_window=get_model_context_window(model_id)
         )
         for model_id in model_ids
     ]

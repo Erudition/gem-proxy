@@ -24,6 +24,8 @@ class Model(BaseModel):
     object: str = "model"
     created: Optional[int] = None
     owned_by: Optional[str] = "google"
+    context_window: Optional[int] = None
+    max_output_tokens: Optional[int] = None
 
 
 class ModelList(BaseModel):
